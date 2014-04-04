@@ -22,7 +22,7 @@ else:
 #logic_tier = importlib.import_module(import_name) # importlib not in Python 2.6
 logic_tier = __import__(import_name, fromlist=['Domain_Logic'])
 Domain_Logic = logic_tier.Domain_Logic
-   
+
 DEBUG_HTML = 'DEBUG_HTML' in os.environ and os.environ['DEBUG_HTML'] != 'False'
 
 def post_document(environ, start_response):
@@ -56,7 +56,7 @@ def post_document(environ, start_response):
         return make_json_response(400, [], [('', 'unrecognized post reason %s' % post_reason)], 'application/json', start_response)
 
 def get_document(environ, start_response):
-    # In this application architectural style, the only method that ever returns HTML is GET. We never  
+    # In this application architectural style, the only method that ever returns HTML is GET. We never
     # return HTML from POST and we do not support application/x-www-form-urlencoded for POST
     domain_logic = Domain_Logic(environ)
     status, headers, body = domain_logic.get_document()
@@ -66,7 +66,7 @@ def get_document(environ, start_response):
                                             'application/json',
                                             'application/rdf+json',
                                             'application/rdf+json+ce', # default
-                                            'application/rdf+xml',                                               
+                                            'application/rdf+xml',
                                             'text/turtle',
                                             'application/x-turtle'))
     if status == 403:
@@ -89,7 +89,7 @@ def get_document(environ, start_response):
     elif best_match == 'application/json':
         if not hasattr(body, 'graph_url'): # not an rdf_json document - probably an error condition
             body = json.dumps(body, cls=rdf_json.RDF_JSON_Encoder)
-        else:    
+        else:
             body = domain_logic.convert_rdf_json_to_compact_json(body)
         return make_json_response(status, headers, body, best_match, start_response)
     elif best_match == 'application/rdf+json':
@@ -112,7 +112,7 @@ def delete_document(environ, start_response):
         return send_auth_challenge(environ, start_response)
     else:
         return make_json_response(status, headers, body, 'application/json', start_response)
-   
+
 def patch_document(environ, start_response):
     domain_logic = Domain_Logic(environ)
     content_type = environ['CONTENT_TYPE'].split(';')[0]
@@ -169,7 +169,7 @@ def application(environ, start_response):
     if request_method == 'GET':
         if path_parts[-1] == '__environ__':
             return get_environ(environ, start_response)
-        elif path_parts[-1] == '__health__': 
+        elif path_parts[-1] == '__health__':
             return get_health(environ, start_response)
         else:
             return get_document(environ, start_response)
@@ -231,7 +231,7 @@ def send_auth_challenge(environ, start_response, best_match_content_type='applic
         start_response('403 Forbidden', [])
         return ['access forbidden']
     else:
-        original_url = '%s%s' % (environ['PATH_INFO'], '?%s'%environ['QUERY_STRING'] if environ['QUERY_STRING'] else '') 
+        original_url = '%s%s' % (environ['PATH_INFO'], '?%s'%environ['QUERY_STRING'] if environ['QUERY_STRING'] else '')
         if best_match_content_type == 'text/html':
             response_body = '<html><header><script>window.name = "%s";window.location.href = "/account/login"</script></header></html>' % original_url
         else:
@@ -244,12 +244,12 @@ def send_auth_challenge(environ, start_response, best_match_content_type='applic
             response_headers.append(('Access-Control-Expose-Headers', 'Content-Location'))
         start_response('401 Unauthorized', response_headers)
         return [response_body]
-    
+
 def get_environ(environ, start_response):
     response_body = ['%s: %s' % (key, value)
                      for key, value in sorted(environ.items())]
     response_body = '\n'.join(response_body)
-    
+
     # Response_body has now more than one string
     response_body = ['environ dictionary\n',
                     '*' * 30 + '\n',
@@ -260,19 +260,19 @@ def get_environ(environ, start_response):
     content_length = 0
     for s in response_body:
         content_length += len(s)
-        
+
     response_headers = [('Content-Type', 'text/plain'),
                         ('Content-Length', str(content_length))]
     start_response('200 OK', response_headers)
     return response_body
-   
+
 def header_set(header, headers):
     headerl = header.lower()
     for item in headers:
         if item[0].lower() == headerl:
             return True
     return False
-    
+
 def make_json_response(status, headers, body, content_type, start_response):
     response_str = json.dumps(body, cls=rdf_json.RDF_JSON_Encoder)
     return make_text_response(status, headers, response_str, content_type, start_response)
@@ -285,7 +285,7 @@ def make_text_response(status, headers, body, content_type, start_response):
     headers.append(('Content-length', str(len(body))))
     start_response('%s %s' % (str(status), http_status_codes[status]), headers)
     return [body]
-    
+
 def convert_graph_to_html(document, graph_id = None, indent=None):
     if indent is None:
         indent = '    '
@@ -294,9 +294,9 @@ def convert_graph_to_html(document, graph_id = None, indent=None):
     predicate_indent = (predicate_header_indent if DEBUG_HTML else subject_indent) + '    '
     if graph_id is None:
         graph_id = 'rdfa-graph'
-    result = (indent + '<div id = "%s" class="rdfa-graph" graph="%s"><br>\n' % (graph_id, document.graph_url)) if DEBUG_HTML else '<div graph="%s">\n' % (document.graph_url)
+    result = (indent + '<div id = "%s" class="rdfa-graph" graph="%s"><br>\n' % (graph_id, document.graph_url)) if DEBUG_HTML else '<div style="display: none;" graph="%s">\n' % (document.graph_url)
     if DEBUG_HTML:
-        result += subject_indent + '<h1>Graph: <a href="%s">%s</a></h1>\n' % (document.graph_url,document.graph_url) 
+        result += subject_indent + '<h1>Graph: <a href="%s">%s</a></h1>\n' % (document.graph_url,document.graph_url)
     graph_count = 0
     def html_element(python_value, one_of_many=False):
         one_of_many_string = 'one-of-many' if one_of_many else ''
@@ -347,9 +347,9 @@ def convert_graph_to_html(document, graph_id = None, indent=None):
             if DEBUG_HTML:
                 result += predicate_header_indent + '<span class="rdfa-predicate"><b>%s:&nbsp;&nbsp;</b></span>\n' % predicate
             if isinstance(value_array, (list, tuple)):
-                subsequent = False   
+                subsequent = False
                 for python_value in value_array:
-                    if DEBUG_HTML and subsequent: 
+                    if DEBUG_HTML and subsequent:
                         result += '    ,'
                     else:
                         subsequent = True
@@ -359,11 +359,11 @@ def convert_graph_to_html(document, graph_id = None, indent=None):
         result += indent + '    </div>\n'
     result += indent + '</div>'
     return result
-    
+
 def convert_rdf_json_to_html(document):
     if not hasattr(document, 'graph_url'): # not an rdf_json document - probably an error condition
         return json.dumps(document, cls=rdf_json.RDF_JSON_Encoder)
-    else:    
+    else:
         config_file_name = '/etc/ce/conf.d/%s.conf' % os.environ['APP_NAME']
         try:
             config_file = open(config_file_name)
@@ -373,7 +373,7 @@ def convert_rdf_json_to_html(document):
             application_url = '/%s/application.js' % os.environ['APP_NAME']
         else:
             config_file.close()
-            
+
         result = ('''
 <!DOCTYPE html>
 <html>
@@ -401,13 +401,13 @@ def convert_rdf_json_to_html(document):
         result += '''
 </body>
 </html>'''
-        
+
         return str(result)
 
 def convert_rdf_json_to_rdf_requested(body, content_type):
     graph = rdfjson_to_graph(rdf_json.normalize(body))
     return serialize_graph(graph, content_type, None) #TODO: should we use wfile instead of string return value?
-    
+
 # Table mapping response codes to messages; entries have the
 # form {code: 'reason'}. See RFC 2616.
 http_status_codes = \
