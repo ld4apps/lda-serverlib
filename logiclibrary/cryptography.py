@@ -1,11 +1,10 @@
 import base64, os
 
-'''from Crypto.Hash import SHA
+from Crypto.Hash import SHA
 from Crypto.Cipher import AES  
 from Crypto.PublicKey import RSA
 from Crypto import Random
 from Crypto.Signature import PKCS1_PSS
-'''
 import jwt
     
 private_key = None
