@@ -4,7 +4,7 @@ from UserDict import UserDict
 from dateutil.parser import parse as to_datetime
 
 XSD = 'http://www.w3.org/2001/XMLSchema#'
-BP = 'http://open-services.net/ns/basicProfile#'
+LDP = 'http://www.w3.org/ns/ldp#'
 
 _invalid_uri_chars = '<>" {}|\\^`'
 
@@ -194,13 +194,13 @@ class RDF_JSON_Document(UserDict):
                 decl[predicate_url_string] = value_array
                 
     def get_container_members(self):
-        membershipSubject = self.getValue(BP+'membershipSubject')
-        membershipObject = self.getValue(BP+'membershipObject')
-        membershipPredicate = self.getValue(BP+'membershipPredicate')
-        if membershipSubject:
-            result = self.getValues(membershipPredicate, [], membershipSubject)
+        membershipResource = self.getValue(LDP+'membershipResource')
+        hasMemberRelation = self.getValue(LDP+'hasMemberRelation')
+        isMemberOfRelation = self.getValue(LDP+'isMemberOfRelation')
+        if hasMemberRelation:
+            result = self.getValues(hasMemberRelation, [], membershipResource)
         else:
-            result = self.getSubjects(membershipPredicate, membershipObject)
+            result = self.getSubjects(isMemberOfRelation, membershipResource)
         return result
             
     add_triple = add_triples

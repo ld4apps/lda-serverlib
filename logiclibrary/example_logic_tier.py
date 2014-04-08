@@ -6,7 +6,7 @@ from rdf_json import URI
 from trsbuilder import TrackedResourceSetBuilder
 import utils
 import os
-from base_constants import RDFS, RDF, BP, XSD, DC, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER
+from base_constants import RDFS, RDF, LDP, XSD, DC, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER
 
 HISTORY = CE+'history'
 CREATION_EVENT = TRS+'Creation'
@@ -16,7 +16,7 @@ DELETION_EVENT = TRS+'Deletion'
 NAMESPACE_MAPPINGS = {
     RDFS : 'rdfs',
     RDF  : 'rdf', 
-    BP :   'bp',
+    LDP :  'ldp',
     XSD :  'xsd',
     DC :   'dc',
     CE :   'ce',
@@ -217,9 +217,9 @@ class Domain_Logic(object):
                 return self.bad_path()
         # TODO: What access control specs govern these "built-in" collections? Who can see them? What resource-group are they part of?
         container_url = utils.construct_url(self.request_hostname, self.tenant, self.namespace)
-        container_properties = { RDF+'type': URI(BP+'Container'),
-                                 BP+'membershipSubject': URI(container_url),
-                                 BP+'membershipPredicate': URI(RDFS+'member'),
+        container_properties = { RDF+'type': URI(LDP+'DirectContainer'),
+                                 LDP+'membershipResource': URI(container_url),
+                                 LDP+'hasMemberRelation': URI(LDP+'member'),
                                  CE+'owner': URI(ADMIN_USER),
                                  AC+'resource-group': self.default_resource_group() }
         document = rdf_json.RDF_JSON_Document({ container_url : container_properties }, container_url)
@@ -235,7 +235,7 @@ class Domain_Logic(object):
                 for result in results:
                     member_values.append(URI(result.graph_url))
                 if len(member_values) != 0:
-                    container_properties[RDFS+'member'] = member_values
+                    container_properties[LDP+'member'] = member_values
             else:
                 return status, [], results
         return status, [], document
@@ -330,7 +330,7 @@ class Domain_Logic(object):
         for rdf_json_document in result:
             # we will include the membership triples, plus any triples in the same documents. This will pick up the triples that describe the members.
             for subject, subject_node in rdf_json_document.iteritems():
-                #warning - tricky code. If a membershipSubject is set to the collection, the member documents will contain triples whose subject is the container itself.
+                #warning - tricky code. If a membership subject is set to the collection, the member documents will contain triples whose subject is the container itself.
                 #To avoid infinite loops, we must not call complete_result_document on this subject. To avoid this, we see if the subject is already in the result
                 new_subject = subject not in container
                 for predicate, value_array in subject_node.iteritems(): 
@@ -339,23 +339,23 @@ class Domain_Logic(object):
                     self.complete_result_document(rdf_json.RDF_JSON_Document(container.data, subject))
         
     def add_bpc_member_properties(self, container):
-        bp_subject = container.getValue(BP+'membershipSubject')
-        bp_object = container.getValue(BP+'membershipObject')
-        bp_predicate = container.getValue(BP+'membershipPredicate')
-        bp_containerSortPredicate = container.getValue(BP+'containerSortPredicates')
-        if not bp_predicate: # this container not based on a simple predicate
-            return (200, container)
-        elif bp_subject:
-            if bp_object: raise ValueError('cannot provide both object and subject')
-            query = {str(bp_subject) : {str(bp_predicate) : '_any'}}
-        elif bp_object: # subject or object may be set, but not both
-            if bp_subject: raise ValueError('cannot provide both object and subject')
-            if bp_object == '_any':
-                query = {'_any': {str(bp_predicate) : '_any'}}
+        ldp_resource = container.getValue(LDP+'membershipResource')
+        ldp_hasMember = container.getValue(LDP+'hasMemberRelation')
+        ldp_isMemberOf = container.getValue(LDP+'isMemberOfRelation')
+        ldp_containerSortPredicate = container.getValue(CE+'containerSortPredicates')
+        if not ldp_resource:
+            raise ValueError('must provide a membership resource')
+        elif ldp_hasMember:
+            if ldp_isMemberOf: raise ValueError('cannot provide both hasMember and isMemberOf predicates')
+            query = {str(ldp_resource) : {str(ldp_hasMember) : '_any'}}
+        elif ldp_isMemberOf: # subject or object may be set, but not both
+            if ldp_hasMember: raise ValueError('cannot provide both hasMember and isMemberOf predicates')
+            if ldp_resource == '_any':
+                query = {'_any': {str(ldp_isMemberOf) : '_any'}}
             else:
-                query = {'_any': {str(bp_predicate) : bp_object}}
+                query = {'_any': {str(ldp_isMemberOf) : ldp_resource}}
         else:
-            raise ValueError('must provide an object or a subject')
+            return (200, container)
         if CHECK_ACCESS_RIGHTS:
             resource_groups = self.resource_groups()
             query['_any2'] = {}
@@ -367,8 +367,8 @@ class Domain_Logic(object):
                 query['_any2']['$or'] = [{CE+'owner': URI(self.user)}, {AC+'resource-group': resource_group_value}]
             else:
                 query['_any2'][CE+'owner'] = URI(self.user)
-        if bp_containerSortPredicate:
-            query = {'$query': query, '$orderby' : {bp_containerSortPredicate: 1}}
+        if ldp_containerSortPredicate:
+            query = {'$query': query, '$orderby' : {ldp_containerSortPredicate: 1}}
         status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
         if status == 200:
             self.add_member_detail(container, result)
@@ -384,7 +384,7 @@ class Domain_Logic(object):
             if len(self.extra_path_segments) == 1 and self.extra_path_segments[0] == 'allVersions' and not self.query_string: # client wants history collection
                 status, document = self.create_all_versions_container(document)
                 return (status, document)
-        if URI(BP+'Container') in document.getValues(RDF+'type'):
+        if URI(LDP+'DirectContainer') in document.getValues(RDF+'type'):
             if self.query_string.endswith('non-member-properties'):
                 document.default_subject_url = document.graph_url
                 document.graph_url = document.graph_url + '?non-member-properties'
@@ -399,21 +399,21 @@ class Domain_Logic(object):
             return status, document
                     
     def complete_document_for_container_insertion(self, document, container):
-        bp_subject = container.getValue(BP+'membershipSubject')
-        bp_object = container.getValue(BP+'membershipObject')
-        bp_predicate = container.getValue(BP+'membershipPredicate')
-        if not bp_predicate:
-            raise ValueError('must provide container predicate: %s' % container)
-        elif bp_subject:
-            if bp_object: raise ValueError('cannot provide both object and subject: %s' % container)
+        ldp_resource = container.getValue(LDP+'membershipResource')
+        ldp_hasMember = container.getValue(LDP+'hasMemberRelation')
+        ldp_isMemberOf = container.getValue(LDP+'isMemberOfRelation')
+        if not ldp_resource:
+            raise ValueError('must provide container resource: %s' % container)
+        elif ldp_hasMember:
+            if ldp_isMemberOf: raise ValueError('cannot provide both hasMember and isMemberOf predicates: %s' % container)
             # store the membership triple in the new document
-            document.add_triples(bp_subject, bp_predicate, URI('')) # last argument is null relative address of resource-to-be
-        elif bp_object: # subject or object may be set, but not both
-            if bp_subject: raise ValueError('cannot provide both object and subject: %s' % container)
+            document.add_triples(ldp_resource, ldp_hasMember, URI('')) # last argument is null relative address of resource-to-be
+        elif ldp_isMemberOf:
+            if ldp_hasMember: raise ValueError('cannot provide both hasMember and isMemberOf predicates: %s' % container)
             # store the membership triple in the new document
-            document.add_triple('', bp_predicate, bp_object) # first argument is null relative address of resource-to-be
+            document.add_triple('', ldp_isMemberOf, ldp_resource) # first argument is null relative address of resource-to-be
         else:
-            raise ValueError('must provide an object or a subject')
+            raise ValueError('must provide a membership predicate')
 
     def complete_document_for_storage_insertion(self, document):
         document.setValue(CE+'owner', URI(self.user))
@@ -434,10 +434,10 @@ class Domain_Logic(object):
         if container_resource_group is None:
             container_resource_group = self.default_resource_group()
         document[container_url] = {
-                RDF+'type': URI((BP+'Container')),
-                (BP+'membershipSubject' if member_is_object else BP+'membershipObject') : URI(membership_resource),
-                BP+'membershipPredicate' : URI(membership_predicate),
-                BP+'newMemberInstructions' : URI(new_url),
+                RDF+'type': URI((LDP+'DirectContainer')),
+                LDP+'membershipResource' : URI(membership_resource),
+                (LDP+'hasMemberRelation' if member_is_object else LDP+'isMemberOfRelation') : URI(membership_predicate),
+                LDP+'newMemberInstructions' : URI(new_url),
                 AC+'resource-group' : container_resource_group
                 }
         if container_owner is not None:
@@ -452,8 +452,8 @@ class Domain_Logic(object):
         elif new_url == self.request_url():
             document.graph_url = new_url
         document[new_url] = { 
-                RDF+'type': URI((BP+'NewMemberInstructions')),
-                BP+'newMemberContainer' : URI(container_url),
+                RDF+'type': URI((CE+'NewMemberInstructions')),
+                CE+'newMemberContainer' : URI(container_url),
                 } 
         if prototypes is not None:
             proto_fragment_index = 0
@@ -462,7 +462,7 @@ class Domain_Logic(object):
                 abs_prototype_url = urlparse.urljoin(container_url, prototype_url)
                 fragment_resource = {
                     RDFS+'label' : URI(label),
-                    BP+'newMemberPrototype' : URI(abs_prototype_url)
+                    CE+'newMemberPrototype' : URI(abs_prototype_url)
                     }
                 proto_id = '/prototype-%d' % proto_fragment_index
                 proto_url = url_template.format(proto_id)
@@ -471,7 +471,7 @@ class Domain_Logic(object):
                 proto_fragment_index += 1
                 document[proto_url] = fragment_resource
                 prototype_graphs.append(URI(proto_url))  
-            document[new_url][BP+'newMemberPrototypes'] = prototype_graphs
+            document[new_url][CE+'newMemberPrototypes'] = prototype_graphs
         return container_url
 
     def create_container(self, url_template, membership_resource, membership_predicate, member_is_object, prototypes=None):
@@ -522,7 +522,7 @@ class Domain_Logic(object):
                 self.add_member_detail(document, result)
                 return (200, document)
             else:
-                return (404, [('', '404 error - ambiguous virtual document - should be a BPC collection?')])
+                return (404, [('', '404 error - ambiguous virtual document - should be a LDPC collection?')])
         else:
             return (status, result)
       
@@ -545,9 +545,9 @@ class Domain_Logic(object):
             result_document = rdf_json.RDF_JSON_Document ({}, request_url)
             result_document[request_url] = {
                 '#id' : URI('all versions'),
-                RDF+'type': URI(BP+'Container'),
-                BP+'membershipObject' : URI(document.graph_url),
-                BP+'membershipPredicate' : URI(CE+'versionOf')
+                RDF+'type': URI(LDP+'DirectContainer'),
+                LDP+'membershipResource' : URI(document.graph_url),
+                LDP+'isMemberOfRelation' : URI(CE+'versionOf')
                 }
             result_document.add_triples(document.graph_url, CE+'versionOf', URI(document.graph_url))
             result_document.add_triples(document.graph_url, CE+'graph', [{'type': 'graph', 'value': document}])
@@ -574,11 +574,11 @@ class Domain_Logic(object):
         converter = rdf_json.RDF_json_to_compact_json_converter(self.namespace_mappings())
         compact_json = converter.convert_to_compact_json(document)
         rdftype = compact_json['rdf_type']
-        if rdftype == BP+'Container':
+        if rdftype == LDP+'DirectContainer':
             members = []
             for member in document.get_container_members():
                 members.append(converter.compact_json_object(member, document, []))
-            compact_json['bp_members'] = members
+            compact_json['ldp_contains'] = members
         return compact_json
 
     def bad_path(self):
