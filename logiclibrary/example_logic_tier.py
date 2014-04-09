@@ -437,7 +437,7 @@ class Domain_Logic(object):
                 RDF+'type': URI((LDP+'DirectContainer')),
                 LDP+'membershipResource' : URI(membership_resource),
                 (LDP+'hasMemberRelation' if member_is_object else LDP+'isMemberOfRelation') : URI(membership_predicate),
-                LDP+'newMemberInstructions' : URI(new_url),
+                CE+'newMemberInstructions' : URI(new_url),
                 AC+'resource-group' : container_resource_group
                 }
         if container_owner is not None:
