@@ -6,59 +6,7 @@ import json
 from base_constants import ADMIN_USER
 from rdf_json import RDF_JSON_Encoder
 
-if 'HOSTINGSITE_HOST' in os.environ:
-    HOSTINGSITE_HOST = os.environ['HOSTINGSITE_HOST'].lower() # hostname and port (if there is one)
-    HOSTINGSITE_HOST = HOSTINGSITE_HOST if len(HOSTINGSITE_HOST.split(':')) > 1 else HOSTINGSITE_HOST+':80'
-else:
-    HOSTINGSITE_HOST = None
-    
 SYSTEM_HOST = os.environ.get('SYSTEM_HOST') if 'SYSTEM_HOST' in os.environ else None
-
-def construct_url(hostname, tenant, namespace=None, document_id = None, extra_segments = None, query_string = None):
-    #hostname is the request hostname. If the hostname is null we are building a 
-    #relative url. The caller is responsible
-    #for assuring that the hostname is compatible with the tenant.
-    
-    if document_id is not None:
-        parts = ['http:/', hostname, namespace, document_id] if hostname is not None else ['', namespace, document_id]
-        if extra_segments is not None:
-            parts.extend(extra_segments)
-    else:
-        if extra_segments is not None:
-            raise ValueError
-        if namespace is not None:
-            parts = ['http:/', hostname, namespace] if hostname is not None else ['', namespace]
-        else:
-            parts = ['http:/', hostname, ''] if hostname is not None else ['','']
-    result =  '/'.join(parts)
-    if query_string:
-        return '?'.join((result, query_string))
-    else:
-        return result
- 
-def get_url_components(environ): 
-    path = environ['PATH_INFO']
-    path_parts = path_parts = path.split('/')
-    namespace = document_id = extra_path_segments = None
-    ce_resource_host = environ.get('HTTP_CE_RESOURCE_HOST')
-    request_host = ce_resource_host.lower() if ce_resource_host else environ['HTTP_HOST'].lower()
-    request_host = request_host if len(request_host.split(':')) > 1 else request_host+':80'
-    if HOSTINGSITE_HOST is None or request_host == HOSTINGSITE_HOST: 
-        tenant = 'hostingsite'
-    else:
-        tenant_parts = request_host.split('.')
-        if '.'.join(tenant_parts[1:]) == HOSTINGSITE_HOST:
-            tenant = tenant_parts[0]
-        else:
-            #TODO: look up a table to see if it's a 'custom domain' for a known tenant
-            tenant = None
-    if len(path_parts) > 1 and path_parts[-1] != '': #trailing /
-        namespace = path_parts[1]
-        if len(path_parts) > 2:
-            document_id = path_parts[2]
-            if len(path_parts) > 3:
-                extra_path_segments = path_parts[3:]
-    return (tenant, namespace, document_id, extra_path_segments, path, path_parts, get_request_host(environ), environ['QUERY_STRING'])
 
 def get_jwt(environ):
     session_key = None

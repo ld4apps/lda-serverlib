@@ -37,7 +37,7 @@ from rdflib.term import URIRef
 from rdflib.term import BNode
 from rdfgraphlib import graph_to_rdfjson, rdfjson_to_graph
 from rdf_json import RDF_JSON_Document
-from utils import construct_url
+from base_constants import URL_POLICY as url_policy
 
 if __name__ == '__main__':
     os.environ['APP_NAME'] = 'LifecycleConcepts'
@@ -268,7 +268,7 @@ class TrackedResourceSetBuilder:
             try: document = cursor.next()
             except StopIteration: break
             document_id = document['_id']
-            member = construct_url(self.publicHostname, None, self.collectionName, document_id)
+            member = url_policy.construct_url(self.publicHostname, None, self.collectionName, document_id)
             graph.add((baseURI, RDFS['member'], URIRef(member)))
 
         # store the new base

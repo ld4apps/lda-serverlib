@@ -7,10 +7,10 @@ from storage_mapping import query_to_storage
 from storage_mapping import storage_value_from_rdf_json
 from storage_mapping import predicate_to_mongo
 from storage_mapping import fix_up_url_for_storage
+from base_constants import URL_POLICY as url_policy
 import os
 import threading
 import logging
-import utils #TODO this is a cyclical dependency between lib-serverlib and lib-mongodbstorage
 
 def get_timestamp():
     #return datetime.utcnow()
@@ -89,7 +89,7 @@ def create_document(user, rdf_json, public_hostname, tenant, namespace, resource
     #   }
     if resource_id == None:
         resource_id = make_objectid()
-    document_url = utils.construct_url(public_hostname, tenant, namespace, resource_id)
+    document_url = url_policy.construct_url(public_hostname, tenant, namespace, resource_id)
     subject_array = make_subject_array(rdf_json, public_hostname, document_url)
     if subject_array is None: return (400, None, 'cannot set system property')
     timestamp = get_timestamp()
@@ -104,7 +104,7 @@ def create_document(user, rdf_json, public_hostname, tenant, namespace, resource
     return (201, document_url, rdf_json_from_storage(json_ld, public_hostname)) # status_code, headers, body (which could contain error info)
 
 def execute_query(user, query, public_hostname, tenant, namespace, projection=None):
-    collection_url = utils.construct_url(public_hostname, tenant, namespace, None)
+    collection_url = url_policy.construct_url(public_hostname, tenant, namespace, None)
     query = query_to_storage(query, public_hostname, collection_url)
     #logging.debug(query)
     if projection is None:
@@ -142,7 +142,7 @@ def create_history_document(user, public_hostname, tenant, namespace, document_i
         history_objectId = make_historyid()
         storage_json['_id'] = history_objectId
         history_collection_name = make_collection_name(tenant, namespace + '_history')
-        history_document_url = utils.construct_url(public_hostname, tenant, namespace + '_history', history_objectId)
+        history_document_url = url_policy.construct_url(public_hostname, tenant, namespace + '_history', history_objectId)
         storage_json['@id'] = fix_up_url_for_storage('', public_hostname, history_document_url)
         MONGO_DB[history_collection_name].insert(storage_json)
         return 201, history_document_url
@@ -169,7 +169,7 @@ def patch_document(user, document, public_hostname, tenant, namespace, document_
         else:
             mod_count_criteria = True
         new_values = document[1]
-        document_url = utils.construct_url(public_hostname, tenant, namespace, document_id)
+        document_url = url_policy.construct_url(public_hostname, tenant, namespace, document_id)
         delete_subject_urls = [ fix_up_url_for_storage(x, public_hostname, document_url) for x in new_values if new_values[x] is None]
         collection_name = make_collection_name(tenant, namespace)
         if len(delete_subject_urls) != 0:

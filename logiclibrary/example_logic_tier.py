@@ -7,6 +7,7 @@ from trsbuilder import TrackedResourceSetBuilder
 import utils
 import os
 from base_constants import RDFS, RDF, LDP, XSD, DC, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER
+from base_constants import URL_POLICY as url_policy
 
 HISTORY = CE+'history'
 CREATION_EVENT = TRS+'Creation'
@@ -27,12 +28,11 @@ NAMESPACE_MAPPINGS = {
 CHECK_ACCESS_RIGHTS = os.environ.get('CHECK_ACCESS_RIGHTS') != 'False'
    
 class Domain_Logic(object):
-
     def __init__(self, environ, change_tracking=False):
         self.environ = environ
         self.claims = utils.get_or_create_claims(environ)
         self.user = self.claims['user']
-        self.url_components = utils.get_url_components(environ)
+        self.url_components = url_policy.get_url_components(environ)
         self.tenant, self.namespace, self.document_id, self.extra_path_segments, self.path, self.path_parts, self.request_hostname, self.query_string = self.url_components
         self.change_tracking = change_tracking # TODO: should we provide a way to turn change_tracking on/off dynamically
         if change_tracking:
@@ -164,14 +164,14 @@ class Domain_Logic(object):
         else:
             resource_group = document.getValue(AC+'resource-group')                        
             if resource_group:
-                permissions_url = utils.construct_url(self.request_hostname, self.tenant, 'ac-permissions') + ('?%s&%s' % (urllib.quote(str(resource_group)), urllib.quote(self.user)))
+                permissions_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-permissions') + ('?%s&%s' % (urllib.quote(str(resource_group)), urllib.quote(self.user)))
                 r = utils.intra_system_get(permissions_url)
                 if r.status_code == 200:
                     return int(r.text)
         return 0
 
     def resource_groups(self):
-        resource_group_url = utils.construct_url(self.request_hostname, self.tenant, 'ac-resource-groups') + ('?%s' % urllib.quote(self.user))
+        resource_group_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-resource-groups') + ('?%s' % urllib.quote(self.user))
         r = utils.intra_system_get(resource_group_url)
         if r.status_code == 200:
             return json.loads(r.text, object_hook=rdf_json.rdf_json_decoder)
@@ -216,7 +216,7 @@ class Domain_Logic(object):
             if not self.namespace: # nope, not a pre-existing container resource either
                 return self.bad_path()
         # TODO: What access control specs govern these "built-in" collections? Who can see them? What resource-group are they part of?
-        container_url = utils.construct_url(self.request_hostname, self.tenant, self.namespace)
+        container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace)
         container_properties = { RDF+'type': URI(LDP+'DirectContainer'),
                                  LDP+'membershipResource': URI(container_url),
                                  LDP+'hasMemberRelation': URI(LDP+'member'),
@@ -260,7 +260,7 @@ class Domain_Logic(object):
                 return self.bad_path() 
             operation_primitives.delete_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
             if self.change_tracking:
-                resource_url = utils.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
+                resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
                 self.generate_change_event(DELETION_EVENT, resource_url)
             return (204, [], [])    
         
@@ -296,7 +296,7 @@ class Domain_Logic(object):
         else:
             if not self.namespace: #trailing / or other problem
                 return self.bad_path()
-            resource_url = utils.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
+            resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
             self.preprocess_properties_for_storage_insertion(rdf_json.RDF_JSON_Document(request_body[1], resource_url))
             mod_count = request_body[0]
             if not (isinstance(mod_count, numbers.Number) and mod_count == (mod_count | 0)):
@@ -314,7 +314,7 @@ class Domain_Logic(object):
                 return (status, [], [result])
 
     def document_url(self):
-        return utils.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
+        return url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
         
     def absolute_url(self, relative_url):
         return urlparse.urljoin(self.request_url(), relative_url)
