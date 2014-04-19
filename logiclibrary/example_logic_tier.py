@@ -26,7 +26,7 @@ NAMESPACE_MAPPINGS = {
     }
 
 CHECK_ACCESS_RIGHTS = os.environ.get('CHECK_ACCESS_RIGHTS') != 'False'
-   
+
 class Domain_Logic(object):
     def __init__(self, environ, change_tracking=False):
         self.environ = environ
@@ -577,7 +577,7 @@ class Domain_Logic(object):
         if rdftype == LDP+'DirectContainer':
             members = []
             for member in document.get_container_members():
-                members.append(converter.compact_json_object(member, document, []))
+                members.append(converter.compact_json_object(str(member), document, []))
             compact_json['ldp_contains'] = members
         return compact_json
 
