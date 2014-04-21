@@ -26,7 +26,7 @@ NAMESPACE_MAPPINGS = {
     }
 
 CHECK_ACCESS_RIGHTS = os.environ.get('CHECK_ACCESS_RIGHTS') != 'False'
-   
+
 class Domain_Logic(object):
     def __init__(self, environ, change_tracking=False):
         self.environ = environ
@@ -433,12 +433,12 @@ class Domain_Logic(object):
                 RDF+'type': URI((LDP+'DirectContainer')),
                 LDP+'membershipResource' : URI(membership_resource),
                 (LDP+'hasMemberRelation' if member_is_object else LDP+'isMemberOfRelation') : URI(membership_predicate),
-                CE+'newMemberInstructions' : URI(new_url),
                 AC+'resource-group' : container_resource_group
                 }
         if container_owner is not None:
             document[container_url][CE+'owner'] = container_owner
-        self.add_new_member_instructions (document, url_template, membership_resource, membership_predicate, member_is_object, prototypes)
+        if prototypes:
+            self.add_new_member_instructions (document, url_template, membership_resource, membership_predicate, member_is_object, prototypes)
 
     def add_new_member_instructions (self, document, url_template, membership_resource, membership_predicate, member_is_object, prototypes=None) :
         container_url = url_template.format('')
@@ -447,27 +447,27 @@ class Domain_Logic(object):
             document.graph_url = container_url
         elif new_url == self.request_url():
             document.graph_url = new_url
+        document[container_url][CE+'newMemberInstructions'] = URI(new_url),
         document[new_url] = { 
                 RDF+'type': URI((CE+'NewMemberInstructions')),
                 CE+'newMemberContainer' : URI(container_url),
                 } 
-        if prototypes is not None:
-            proto_fragment_index = 0
-            prototype_graphs = []
-            for label, prototype_url in prototypes.iteritems():
-                abs_prototype_url = urlparse.urljoin(container_url, prototype_url)
-                fragment_resource = {
-                    RDFS+'label' : URI(label),
-                    CE+'newMemberPrototype' : URI(abs_prototype_url)
-                    }
-                proto_id = '/prototype-%d' % proto_fragment_index
-                proto_url = url_template.format(proto_id)
-                if proto_url == self.request_url():
-                    document.graph_url = proto_url
-                proto_fragment_index += 1
-                document[proto_url] = fragment_resource
-                prototype_graphs.append(URI(proto_url))  
-            document[new_url][CE+'newMemberPrototypes'] = prototype_graphs
+        proto_fragment_index = 0
+        prototype_graphs = []
+        for label, prototype_url in prototypes.iteritems():
+            abs_prototype_url = urlparse.urljoin(container_url, prototype_url)
+            fragment_resource = {
+                RDFS+'label' : URI(label),
+                CE+'newMemberPrototype' : URI(abs_prototype_url)
+                }
+            proto_id = '/prototype-%d' % proto_fragment_index
+            proto_url = url_template.format(proto_id)
+            if proto_url == self.request_url():
+                document.graph_url = proto_url
+            proto_fragment_index += 1
+            document[proto_url] = fragment_resource
+            prototype_graphs.append(URI(proto_url))  
+        document[new_url][CE+'newMemberPrototypes'] = prototype_graphs
         return container_url
 
     def create_container(self, url_template, membership_resource, membership_predicate, member_is_object, prototypes=None):
@@ -573,7 +573,7 @@ class Domain_Logic(object):
         if rdftype == LDP+'DirectContainer':
             members = []
             for member in document.get_container_members():
-                members.append(converter.compact_json_object(member, document, []))
+                members.append(converter.compact_json_object(str(member), document, []))
             compact_json['ldp_contains'] = members
         return compact_json
 
