@@ -320,11 +320,7 @@ class Domain_Logic(object):
         return urlparse.urljoin(self.request_url(), relative_url)
 
     def request_url(self):
-        qs = self.query_string
-        if qs:
-            return 'http://%s%s?%s' % (self.request_hostname, self.path, qs)
-        else:
-            return 'http://%s%s' % (self.request_hostname, self.path)
+        return url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id, self.extra_path_segments, self.query_string)
         
     def add_member_detail(self, container, result):
         for rdf_json_document in result:
@@ -426,7 +422,7 @@ class Domain_Logic(object):
         pass
             
     def default_resource_group(self):
-        return URI(urlparse.urljoin(self.request_url(), '/'))
+        return URI(url_policy.construct_url(self.request_hostname, self.tenant)) # default is the root resource (i.e., '/')
 
     def add_container(self, document, url_template, membership_resource, membership_predicate, member_is_object, container_resource_group=None, container_owner=None, prototypes=None) :
         container_url = url_template.format('')
