@@ -424,7 +424,7 @@ class Domain_Logic(object):
     def default_resource_group(self):
         return URI(url_policy.construct_url(self.request_hostname, self.tenant)) # default is the root resource (i.e., '/')
 
-    def add_container(self, document, url_template, membership_resource, membership_predicate, member_is_object, container_resource_group=None, container_owner=None, prototypes=None) :
+    def add_container(self, document, url_template, membership_resource, membership_predicate, member_is_object, container_resource_group=None, container_owner=None) :
         container_url = url_template.format('')
         new_url = url_template.format('/new')
         if container_resource_group is None:
@@ -437,46 +437,14 @@ class Domain_Logic(object):
                 }
         if container_owner is not None:
             document[container_url][CE+'owner'] = container_owner
-        if prototypes:
-            self.add_new_member_instructions (document, url_template, membership_resource, membership_predicate, member_is_object, prototypes)
 
-    def add_new_member_instructions (self, document, url_template, membership_resource, membership_predicate, member_is_object, prototypes=None) :
-        container_url = url_template.format('')
-        new_url = url_template.format('/new')
-        if container_url == self.request_url():
-            document.graph_url = container_url
-        elif new_url == self.request_url():
-            document.graph_url = new_url
-        document[container_url][CE+'newMemberInstructions'] = URI(new_url),
-        document[new_url] = { 
-                RDF+'type': URI((CE+'NewMemberInstructions')),
-                CE+'newMemberContainer' : URI(container_url),
-                } 
-        proto_fragment_index = 0
-        prototype_graphs = []
-        for label, prototype_url in prototypes.iteritems():
-            abs_prototype_url = urlparse.urljoin(container_url, prototype_url)
-            fragment_resource = {
-                RDFS+'label' : URI(label),
-                CE+'newMemberPrototype' : URI(abs_prototype_url)
-                }
-            proto_id = '/prototype-%d' % proto_fragment_index
-            proto_url = url_template.format(proto_id)
-            if proto_url == self.request_url():
-                document.graph_url = proto_url
-            proto_fragment_index += 1
-            document[proto_url] = fragment_resource
-            prototype_graphs.append(URI(proto_url))  
-        document[new_url][CE+'newMemberPrototypes'] = prototype_graphs
-        return container_url
-
-    def create_container(self, url_template, membership_resource, membership_predicate, member_is_object, prototypes=None):
+    def create_container(self, url_template, membership_resource, membership_predicate, member_is_object):
         container_url = url_template.format('')
         document = rdf_json.RDF_JSON_Document ({}, container_url)
-        self.add_container(document, url_template, membership_resource, membership_predicate, member_is_object, None, None, prototypes)
+        self.add_container(document, url_template, membership_resource, membership_predicate, member_is_object, None, None)
         return document 
         
-    def container_from_membership_resource_in_query_string(self, url_template, membership_predicate, member_is_object, prototypes=None):
+    def container_from_membership_resource_in_query_string(self, url_template, membership_predicate, member_is_object):
         if self.query_string.endswith('?non-member-properties'):
             qs = self.query_string[:-22]
         else:
@@ -486,25 +454,7 @@ class Domain_Logic(object):
         status, document = self.complete_result_document(document)
         return [status, [], document] 
 
-    def create_resource(self, membership_resource, membership_predicate, member_is_object):
-        container_url = self.request_url()
-        document = rdf_json.RDF_JSON_Document ({}, container_url)
-        status, document = self.add_resource_triples(document, membership_resource, membership_predicate, member_is_object)
-        return status, document 
-        
-    def resource_from_object_in_query_string(self, membership_predicate, member_is_object):
-        membership_resource = self.absolute_url(urllib.unquote(self.query_string))
-        status, document = self.create_resource(membership_resource, membership_predicate, member_is_object)
-        headers = []
-        if status == 200:
-            content_location = document.getValue(membership_predicate, None, membership_resource) if member_is_object else document.getSubject(membership_predicate, None, membership_resource) 
-            document.add_triples(self.request_url(), OWL+'sameAs', content_location)
-            document.graph_url = str(content_location)
-            if status == 200:
-                headers.append(('Content-Location', str(content_location)))
-        return [status, headers, document] 
-        
-    def add_resource_triples(self, document, membership_resource, membership_predicate, member_is_object):
+    def query_resource_document(self, membership_resource, membership_predicate, member_is_object, make_result):
         if member_is_object:
             query = {membership_resource : {membership_predicate : '_any'}}
         else: 
@@ -514,14 +464,26 @@ class Domain_Logic(object):
             if len(result) == 0:
                 return (404, [('', '404 error - no such virtual document %s' % result)])
             elif len(result) == 1:
-                # we will include the membership triples, plus any triples in the same documents. This will pick up the triples that describe the members.
-                self.add_member_detail(document, result)
-                return (200, document)
+                make_result(result)
             else:
                 return (404, [('', '404 error - ambiguous virtual document - should be a LDPC collection?')])
         else:
             return (status, result)
+
+    def resource_from_object_in_query_string(self, membership_predicate, member_is_object):
+        membership_resource = self.absolute_url(urllib.unquote(self.query_string))
+        def make_result(result):
+            document = result[0]
+            document.add_triples(self.request_url(), OWL+'sameAs', content_location)
+            return (200, document)                
+        return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
       
+    def add_resource_triples(self, document, membership_resource, membership_predicate, member_is_object):
+        def make_result(result):
+            self.add_member_detail(document, result)
+            return (200, document)             
+        return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
+
     def add_owned_container(self, document, container_predicate, container_path_segment, membership_predicate, foreign_key_is_reversed=False):
         document_url = document.graph_url    
         document.add_triples(document_url, container_predicate, URI(document_url + '/' + container_path_segment))
