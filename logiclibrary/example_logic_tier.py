@@ -6,6 +6,7 @@ from rdf_json import URI
 from trsbuilder import TrackedResourceSetBuilder
 import utils
 import os
+import requests
 from base_constants import RDFS, RDF, LDP, XSD, DC, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER
 from base_constants import URL_POLICY as url_policy
 
@@ -297,6 +298,8 @@ class Domain_Logic(object):
             if not self.namespace: #trailing / or other problem
                 return self.bad_path()
             resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
+            if not (isinstance(request_body, list) and len(request_body) == 2 and isinstance(request_body[0], int)): 
+                return (400, [], [('', 'patch body must be array of form [modification_count, rdf/json object]')])
             self.preprocess_properties_for_storage_insertion(rdf_json.RDF_JSON_Document(request_body[1], resource_url))
             mod_count = request_body[0]
             if not (isinstance(mod_count, numbers.Number) and mod_count == (mod_count | 0)):
@@ -450,7 +453,7 @@ class Domain_Logic(object):
         else:
             qs = self.query_string
         membership_resource = self.absolute_url(urllib.unquote(qs))
-        document = self.create_container(url_template, membership_resource, membership_predicate, member_is_object, prototypes)
+        document = self.create_container(url_template, membership_resource, membership_predicate, member_is_object)
         status, document = self.complete_result_document(document)
         return [status, [], document] 
 
@@ -474,7 +477,7 @@ class Domain_Logic(object):
         membership_resource = self.absolute_url(urllib.unquote(self.query_string))
         def make_result(result):
             document = result[0]
-            document.add_triples(self.request_url(), OWL+'sameAs', content_location)
+            document.add_triples(self.request_url(), OWL+'sameAs', document.graph_url)
             return (200, document)                
         return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
       
@@ -544,7 +547,7 @@ class Domain_Logic(object):
         
     def check_input_value(self, rdf_document, predicate, field_errors, type=None, required=True):
         value = rdf_document.getValue(predicate)
-        if not value:
+        if value == None:
             if required:
                 field_errors.append((predicate, 'must provide value'))
             return False
@@ -552,7 +555,26 @@ class Domain_Logic(object):
             field_errors.append((predicate, 'must be a %s' % type)) 
             return False
         return True
-    
+
+    def intra_system_get(self, request_url, headers={}):
+        get_url = utils.set_resource_host_header(request_url, headers)
+        headers['SSSESSIONID'] = utils.get_jwt(self.environ)
+        if not 'Accept' in headers:
+            headers['Accept'] = 'application/rdf+json+ce'
+        return requests.get(get_url, headers=headers)
+
+    def intra_system_post(self, request_url, data, headers={}):
+        if not 'Content-Type' in headers:
+            headers['Content-Type'] = 'application/rdf+json+ce'
+        post_url = utils.set_resource_host_header(request_url, headers)
+        return requests.post(post_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
+        
+    def intra_system_patch(self, request_url, data, headers={}):
+        if not 'Content-Type' in headers:
+            headers['Content-Type'] = 'application/json'
+        post_url = utils.set_resource_host_header(request_url, headers)
+        return requests.patch(post_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
+        
 def get_header(header, headers, default=None):
     headerl = header.lower()
     for item in headers:
