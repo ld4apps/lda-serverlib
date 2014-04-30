@@ -557,7 +557,7 @@ class Domain_Logic(object):
         return True
 
     def intra_system_get(self, request_url, headers={}):
-        get_url = utils.set_resource_host_header(request_url, headers)
+        get_url = utils.set_resource_host_header(str(request_url), headers)
         headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Accept' in headers:
             headers['Accept'] = 'application/rdf+json+ce'
@@ -566,13 +566,15 @@ class Domain_Logic(object):
     def intra_system_post(self, request_url, data, headers={}):
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/rdf+json+ce'
-        post_url = utils.set_resource_host_header(request_url, headers)
+        if not 'CE-Post-Reason' in headers:
+            headers['CE-Post-Reason'] = 'CE-Create'
+        post_url = utils.set_resource_host_header(str(request_url), headers)
         return requests.post(post_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
         
     def intra_system_patch(self, request_url, data, headers={}):
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/json'
-        post_url = utils.set_resource_host_header(request_url, headers)
+        post_url = utils.set_resource_host_header(str(request_url), headers)
         return requests.patch(post_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
         
 def get_header(header, headers, default=None):
