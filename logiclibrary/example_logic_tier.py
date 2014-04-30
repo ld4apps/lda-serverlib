@@ -427,7 +427,7 @@ class Domain_Logic(object):
     def default_resource_group(self):
         return URI(url_policy.construct_url(self.request_hostname, self.tenant)) # default is the root resource (i.e., '/')
 
-    def add_container(self, document, url_template, membership_resource, membership_predicate, member_is_object, container_resource_group=None, container_owner=None) :
+    def add_container(self, document, url_template, membership_resource, membership_predicate, member_is_object=True, container_resource_group=None, container_owner=None) :
         container_url = url_template.format('')
         new_url = url_template.format('/new')
         if container_resource_group is None:
@@ -441,7 +441,7 @@ class Domain_Logic(object):
         if container_owner is not None:
             document[container_url][CE+'owner'] = container_owner
 
-    def create_container(self, url_template, membership_resource, membership_predicate, member_is_object):
+    def create_container(self, url_template, membership_resource, membership_predicate, member_is_object=True):
         container_url = url_template.format('')
         document = rdf_json.RDF_JSON_Document ({}, container_url)
         self.add_container(document, url_template, membership_resource, membership_predicate, member_is_object, None, None)
@@ -473,7 +473,7 @@ class Domain_Logic(object):
         else:
             return (status, result)
 
-    def resource_from_object_in_query_string(self, membership_predicate, member_is_object):
+    def resource_from_object_in_query_string(self, membership_predicate, member_is_object=True):
         membership_resource = self.absolute_url(urllib.unquote(self.query_string))
         def make_result(result):
             document = result[0]
@@ -481,7 +481,7 @@ class Domain_Logic(object):
             return (200, document)                
         return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
       
-    def add_resource_triples(self, document, membership_resource, membership_predicate, member_is_object):
+    def add_resource_triples(self, document, membership_resource, membership_predicate, member_is_object=True):
         def make_result(result):
             self.add_member_detail(document, result)
             return (200, document)             
