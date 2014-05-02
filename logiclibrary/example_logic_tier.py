@@ -53,7 +53,7 @@ class Domain_Logic(object):
                 self.namespace = namespace
             if document_id is not None:
                 self.document_id = document_id
-            if extra_path_segments:
+            if extra_path_segments is not None:
                 self.extra_path_segments = extra_path_segments
             self.path_parts = ['', self.namespace, self.document_id] if self.namespace and self.document_id else ['', self.namespace] if self.namespace else ['']
             if self.extra_path_segments:
@@ -376,7 +376,15 @@ class Domain_Logic(object):
             return (200, container)
         else:
             return (status, result)
-            
+
+    def complete_container(self, document):
+        if self.query_string.endswith('non-member-properties'):
+            document.default_subject_url = document.graph_url
+            document.graph_url = document.graph_url + '?non-member-properties'
+            return 200, document
+        else:
+            return self.add_bpc_member_properties(document)
+
     def complete_result_document(self, document):
         document_url = document.graph_url #self.document_url()
         if self.extra_path_segments == None: # a simple document URL with no extra path segments
@@ -385,13 +393,14 @@ class Domain_Logic(object):
             if len(self.extra_path_segments) == 1 and self.extra_path_segments[0] == 'allVersions' and not self.query_string: # client wants history collection
                 status, document = self.create_all_versions_container(document)
                 return (status, document)
+        request_url = self.request_url()
+        if document.graph_url != request_url: #usually a bad thing, unless it's an owned container that was being asked for
+            owned_container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id, self.extra_path_segments)
+            if owned_container_url in document.data and URI(LDP+'DirectContainer') in document.getValues(RDF+'type', [], owned_container_url):
+                document.graph_url = owned_container_url
+                return self.complete_container(document)
         if URI(LDP+'DirectContainer') in document.getValues(RDF+'type'):
-            if self.query_string.endswith('non-member-properties'):
-                document.default_subject_url = document.graph_url
-                document.graph_url = document.graph_url + '?non-member-properties'
-                status = 200
-            else:
-                status, document = self.add_bpc_member_properties(document)
+            status, document = self.complete_container(document)
         else:
             status = 200
         if document.graph_url != self.request_url():
@@ -429,7 +438,7 @@ class Domain_Logic(object):
     def default_resource_group(self):
         return URI(url_policy.construct_url(self.request_hostname, self.tenant)) # default is the root resource (i.e., '/')
 
-    def add_container(self, document, url_template, membership_resource, membership_predicate, member_is_object=True, container_resource_group=None, container_owner=None) :
+    def add_container(self, document, url_template, membership_resource, membership_predicate, member_is_object=False, container_resource_group=None, container_owner=None) :
         container_url = url_template.format('')
         new_url = url_template.format('/new')
         if container_resource_group is None:
@@ -443,7 +452,7 @@ class Domain_Logic(object):
         if container_owner is not None:
             document[container_url][CE+'owner'] = container_owner
 
-    def create_container(self, url_template, membership_resource, membership_predicate, member_is_object=True):
+    def create_container(self, url_template, membership_resource, membership_predicate, member_is_object=False):
         container_url = url_template.format('')
         document = rdf_json.RDF_JSON_Document ({}, container_url)
         self.add_container(document, url_template, membership_resource, membership_predicate, member_is_object, None, None)
@@ -475,7 +484,7 @@ class Domain_Logic(object):
         else:
             return (status, result)
 
-    def resource_from_object_in_query_string(self, membership_predicate, member_is_object=True):
+    def resource_from_object_in_query_string(self, membership_predicate, member_is_object=False):
         membership_resource = self.absolute_url(urllib.unquote(self.query_string))
         def make_result(result):
             document = result[0]
@@ -483,23 +492,28 @@ class Domain_Logic(object):
             return (200, document)                
         return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
       
-    def add_resource_triples(self, document, membership_resource, membership_predicate, member_is_object=True):
+    def add_resource_triples(self, document, membership_resource, membership_predicate, member_is_object=False):
         def make_result(result):
             self.add_member_detail(document, result)
             return (200, document)             
         return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
 
-    def add_owned_container(self, document, container_predicate, container_path_segment, membership_predicate, foreign_key_is_reversed=False):
+    def add_owned_container(self, document, container_predicate, container_path_segment, membership_predicate, member_is_object=False):
         document_url = document.graph_url    
         document.add_triples(document_url, container_predicate, URI(document_url + '/' + container_path_segment))
         if self.request_url().startswith(document_url) and self.extra_path_segments != None and len(self.extra_path_segments) == 1 and self.extra_path_segments[0] == container_path_segment: 
             # client doesn't really want the document, just its owned container
             container_resouce_group = document.getValue(AC+'resource-group')
             container_owner = document.getValue(CE+'owner')
-            document.graph_url = document_url + '/' + container_path_segment
-            template = '%s{0}' % document.graph_url
-            self.add_container(document, template, document_url, membership_predicate, foreign_key_is_reversed, container_resouce_group, container_owner)  
-                
+            container_graph_url = document_url + '/' + container_path_segment
+            template = '%s{0}' % container_graph_url
+            self.add_container(document, template, document_url, membership_predicate, member_is_object, container_resouce_group, container_owner)  
+
+    def add_owned_inverse(self, document, property_predicate, membership_shortname):
+        query_string = urllib.quote(self.request_url()) 
+        url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, membership_shortname, query_string=query_string)
+        document.set_value(property_predicate, url)
+
     def create_all_versions_container(self, document):
         history = document.getValues(HISTORY)
         status, query_result = operation_primitives.get_prior_versions(self.user, self.request_hostname, self.namespace, history)
@@ -547,14 +561,14 @@ class Domain_Logic(object):
     def bad_path(self):
         return (400, [], [('', '4001 - bad path: %s (trailing / or path too short or other problem)' % self.path)])
         
-    def check_input_value(self, rdf_document, predicate, field_errors, type=None, required=True):
-        value = rdf_document.getValue(predicate)
+    def check_input_value(self, rdf_document, predicate, field_errors, value_type=None, required=True):
+        value = rdf_document.get_property(predicate)
         if value == None:
             if required:
                 field_errors.append((predicate, 'must provide value'))
             return False
-        elif type and not isinstance(value, type):
-            field_errors.append((predicate, 'must be a %s' % type)) 
+        elif value_type and not isinstance(value, value_type):
+            field_errors.append((predicate, '%s must be a %s, type is: %s' % (value, str(value_type), type(value)))) 
             return False
         return True
 
