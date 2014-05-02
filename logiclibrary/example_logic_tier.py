@@ -337,7 +337,7 @@ class Domain_Logic(object):
                 if new_subject:
                     self.complete_result_document(rdf_json.RDF_JSON_Document(container.data, subject))
         
-    def add_bpc_member_properties(self, container):
+    def add_bpc_member_properties(self, container, query=None):
         ldp_resource = container.getValue(LDP+'membershipResource')
         ldp_hasMember = container.getValue(LDP+'hasMemberRelation')
         ldp_isMemberOf = container.getValue(LDP+'isMemberOfRelation')
@@ -346,13 +346,15 @@ class Domain_Logic(object):
             raise ValueError('must provide a membership resource')
         elif ldp_hasMember:
             if ldp_isMemberOf: raise ValueError('cannot provide both hasMember and isMemberOf predicates')
-            query = {str(ldp_resource) : {str(ldp_hasMember) : '_any'}}
+            if not query:
+                query = {str(ldp_resource) : {str(ldp_hasMember) : '_any'}}
         elif ldp_isMemberOf: # subject or object may be set, but not both
             if ldp_hasMember: raise ValueError('cannot provide both hasMember and isMemberOf predicates')
-            if ldp_resource == '_any':
-                query = {'_any': {str(ldp_isMemberOf) : '_any'}}
-            else:
-                query = {'_any': {str(ldp_isMemberOf) : ldp_resource}}
+            if not query:
+                if ldp_resource == '_any':
+                    query = {'_any': {str(ldp_isMemberOf) : '_any'}}
+                else:
+                    query = {'_any': {str(ldp_isMemberOf) : ldp_resource}}
         else:
             return (200, container)
         if CHECK_ACCESS_RIGHTS:
