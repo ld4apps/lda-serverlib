@@ -476,11 +476,11 @@ class Domain_Logic(object):
         status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
         if status == 200:
             if len(result) == 0:
-                return (404, [('', '404 error - no such virtual document %s' % result)])
+                return 404, [], [('', '404 error - no such virtual document %s' % result)]
             elif len(result) == 1:
-                make_result(result)
+                return make_result(result)
             else:
-                return (404, [('', '404 error - ambiguous virtual document - should be a LDPC collection?')])
+                return 404, [], [('', '404 error - ambiguous virtual document - should be a LDPC collection?')]
         else:
             return (status, result)
 
@@ -489,13 +489,13 @@ class Domain_Logic(object):
         def make_result(result):
             document = result[0]
             document.add_triples(self.request_url(), OWL+'sameAs', document.graph_url)
-            return (200, document)                
+            return 200, [('Content-Location', str(document.graph_url))], document                
         return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
       
     def add_resource_triples(self, document, membership_resource, membership_predicate, member_is_object=False):
         def make_result(result):
             self.add_member_detail(document, result)
-            return (200, document)             
+            return 200, [], document             
         return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
 
     def add_owned_container(self, document, container_predicate, container_path_segment, membership_predicate, member_is_object=False):
@@ -510,7 +510,7 @@ class Domain_Logic(object):
             self.add_container(document, template, document_url, membership_predicate, member_is_object, container_resouce_group, container_owner)  
 
     def add_owned_inverse(self, document, property_predicate, membership_shortname):
-        query_string = urllib.quote(self.request_url()) 
+        query_string = urllib.quote(self.document_url()) 
         url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, membership_shortname, query_string=query_string)
         document.set_value(property_predicate, url)
 
