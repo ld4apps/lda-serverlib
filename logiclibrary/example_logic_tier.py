@@ -509,9 +509,11 @@ class Domain_Logic(object):
             template = '%s{0}' % container_graph_url
             self.add_container(document, template, document_url, membership_predicate, member_is_object, container_resouce_group, container_owner)  
 
-    def add_owned_inverse(self, document, property_predicate, membership_shortname):
+    def add_inverse(self, document, property_predicate, membership_shortname, namespace=None):
+        if not namespace:
+            namespace = self.namespace
         query_string = urllib.quote(self.document_url()) 
-        url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, membership_shortname, query_string=query_string)
+        url = url_policy.construct_url(self.request_hostname, self.tenant, namespace, membership_shortname, query_string=query_string)
         document.set_value(property_predicate, url)
 
     def create_all_versions_container(self, document):
@@ -574,12 +576,15 @@ class Domain_Logic(object):
 
     def intra_system_get(self, request_url, headers={}):
         get_url = utils.set_resource_host_header(str(request_url), headers)
-        headers['SSSESSIONID'] = utils.get_jwt(self.environ)
+        if not 'SSSESSIONID' in headers:
+            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Accept' in headers:
             headers['Accept'] = 'application/rdf+json+ce'
         return requests.get(get_url, headers=headers)
 
     def intra_system_post(self, request_url, data, headers={}):
+        if not 'SSSESSIONID' in headers:
+            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/rdf+json+ce'
         if not 'CE-Post-Reason' in headers:
@@ -588,10 +593,18 @@ class Domain_Logic(object):
         return requests.post(post_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
         
     def intra_system_patch(self, request_url, data, headers={}):
+        if not 'SSSESSIONID' in headers:
+            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/json'
-        post_url = utils.set_resource_host_header(str(request_url), headers)
-        return requests.patch(post_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
+        patch_url = utils.set_resource_host_header(str(request_url), headers)
+        return requests.patch(patch_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
+
+    def intra_system_delete(self, request_url, data, headers={}):
+        if not 'SSSESSIONID' in headers:
+            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
+        delete_url = utils.set_resource_host_header(str(request_url), headers)
+        return requests.delete(delete_url, headers=headers, verify=False)
         
 def get_header(header, headers, default=None):
     headerl = header.lower()
