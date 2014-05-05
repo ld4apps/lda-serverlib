@@ -600,7 +600,7 @@ class Domain_Logic(object):
         patch_url = utils.set_resource_host_header(str(request_url), headers)
         return requests.patch(patch_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
 
-    def intra_system_delete(self, request_url, data, headers={}):
+    def intra_system_delete(self, request_url, headers={}):
         if not 'SSSESSIONID' in headers:
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         delete_url = utils.set_resource_host_header(str(request_url), headers)
