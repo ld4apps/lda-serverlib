@@ -59,7 +59,8 @@ class Domain_Logic(object):
             if self.extra_path_segments:
                 self.path_parts = self.path_parts + self.extra_path_segments
             self.path = '/'.join(self.path_parts)
-            self.query_string = query_string    
+            if query_string is not None:
+                self.query_string = query_string    
             status, headers, container = function()
         finally: 
             self.namespace = original_namespace
