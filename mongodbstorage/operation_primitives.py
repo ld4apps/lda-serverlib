@@ -197,6 +197,8 @@ def patch_document(user, document, public_hostname, tenant, namespace, document_
                         subject_sets['@graph.$.' + predicate_to_mongo(predicate)] = [storage_value_from_rdf_json(value, public_hostname, document_url) for value in value_array]
                     else:
                         subject_unsets['@graph.$.' + predicate_to_mongo(predicate)] = 1
+                elif value_array == None:
+                    subject_unsets['@graph.$.' + predicate_to_mongo(predicate)] = 1
                 else:
                     subject_sets['@graph.$.' + predicate_to_mongo(predicate)] = storage_value_from_rdf_json(value_array, public_hostname, document_url)
             patch = {'$inc' : {'_modificationCount' : 1}, '$set' : subject_sets, '$unset' : subject_unsets, '$push': {'_history' : history_document_id}}
