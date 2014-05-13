@@ -490,6 +490,7 @@ class Domain_Logic(object):
         def make_result(result):
             document = result[0]
             document.add_triples(self.request_url(), OWL+'sameAs', document.graph_url)
+            self.complete_result_document(document)
             return 200, [('Content-Location', str(document.graph_url))], document                
         return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
       
