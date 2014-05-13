@@ -53,7 +53,7 @@ def create_anonymous_user_claims(environ):
 def get_request_host(environ):
     return environ.get('HTTP_CE_RESOURCE_HOST') or environ['HTTP_HOST']
 
-def prepare_intra_system_call(request_url, headers):
+def set_resource_host_header(request_url, headers):
     if SYSTEM_HOST is not None:
         parts = list(urlparse.urlparse(request_url))
         headers['CE-Resource-Host'] = parts[1]
@@ -63,7 +63,7 @@ def prepare_intra_system_call(request_url, headers):
         return request_url
 
 def intra_system_get(request_url, headers={}):
-    get_url = prepare_intra_system_call(request_url, headers)
+    get_url = set_resource_host_header(request_url, headers)
     return requests.get(get_url, headers=headers)
 
 CONTENT_RDF_JSON_HEADER = {
@@ -73,7 +73,7 @@ CONTENT_RDF_JSON_HEADER = {
     }
 
 def intra_system_post(request_url, data, headers=CONTENT_RDF_JSON_HEADER):
-    post_url = prepare_intra_system_call(request_url, headers)
+    post_url = set_resource_host_header(request_url, headers)
     return requests.post(post_url, headers=headers, data=json.dumps(data, cls=RDF_JSON_Encoder), verify=False)
     return None
 
