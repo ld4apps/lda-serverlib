@@ -1,6 +1,6 @@
 from setuptools import setup
 
-setup(name='ldo-serverlib',
+setup(name='lda-serverlib',
       version='1.0',
       description='LDA Server Library',
       author='Your Name',
