@@ -332,6 +332,10 @@ def convert_graph_to_html(document, graph_id = None, indent=None):
             rslt = convert_graph_to_html(python_value['value'], graph_id + '-' + str(graph_count), predicate_indent + '    ')
             graph_count = graph_count+1
             rslt = predicate_indent + '}</span><br>\n'
+        elif python_value is None: # TODO: Review with Martin, figure out proper way to handle None value
+            rslt = predicate_indent + \
+                ('<span class="rdfa-triple" property="%s" %s>%s</span><br>\n' % (predicate, one_of_many_string, "BAD VALUE: NULL!") if DEBUG_HTML else \
+                 '<span property="%s" %s>%s</span>\n' % (predicate, one_of_many_string, "BAD VALUE: NULL!") )
         else:
             raise ValueError('new case? : %s' % python_value)
         return rslt
