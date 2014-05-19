@@ -9,7 +9,7 @@ import datetime
 import numbers
 import utils
 import jwt
-from base_constants import XSD
+from base_constants import XSD, RDF
 
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -286,82 +286,81 @@ def make_text_response(status, headers, body, content_type, start_response):
     start_response('%s %s' % (str(status), http_status_codes[status]), headers)
     return [body]
 
-def convert_graph_to_html(document, graph_id = None, indent=None):
-    if indent is None:
-        indent = '    '
-    subject_indent = indent + '    '
-    predicate_header_indent = subject_indent + '    '
-    predicate_indent = (predicate_header_indent if DEBUG_HTML else subject_indent) + '    '
+def convert_graph_to_html(document, graph_id = None, g_indent=None):
+    if g_indent is None:
+        g_indent = '    '
+    g_subject_indent = g_indent + '    '
+    g_predicate_header_indent = g_subject_indent + '    '
+    g_predicate_indent = (g_predicate_header_indent if DEBUG_HTML else g_subject_indent) + '    '
     if graph_id is None:
         graph_id = 'rdfa-graph'
-    result = (indent + '<div id = "%s" class="rdfa-graph" graph="%s"><br>\n' % (graph_id, document.graph_url)) if DEBUG_HTML else '<div style="display: none;" graph="%s">\n' % (document.graph_url)
+    result = (g_indent + '<div id = "%s" class="rdfa-graph" graph="%s"><br>\n' % (graph_id, document.graph_url)) if DEBUG_HTML else '<div style="display: none;" graph="%s">\n' % (document.graph_url)
     if DEBUG_HTML:
-        result += subject_indent + '<h1>Graph: <a href="%s">%s</a></h1>\n' % (document.graph_url,document.graph_url)
+        result += g_subject_indent + '<h1>Graph: <a href="%s">%s</a></h1>\n' % (document.graph_url,document.graph_url)
     graph_count = 0
-    def html_element(python_value, one_of_many=False):
-        one_of_many_string = 'one-of-many' if one_of_many else ''
-        if isinstance(python_value, URI) or isinstance(python_value, BNode):
+    def html_element(predicate, python_value, indent):
+        property_string = 'property="%s" ' % predicate if predicate else ''
+        class_string = 'class="rdfa-triple" ' if DEBUG_HTML else ''
+        subject_indent = indent + '    '
+        predicate_header_indent = subject_indent + '    '
+        predicate_indent = (predicate_header_indent if DEBUG_HTML else subject_indent) + '    '
+        if isinstance(python_value, (list, tuple)):
             rslt = predicate_indent + \
-                ('<a class="rdfa-triple" property="%s" href="%s" %s>%s</a><br>\n' % (predicate, str(python_value), one_of_many_string, str(python_value)) if DEBUG_HTML else \
-                 '<a property="%s" href="%s" %s></a>\n' % (predicate, str(python_value), one_of_many_string))
+                '<span %s%sdatatype="%s"><br>\n' % (class_string, property_string, RDF+'List') 
+            subsequent = False
+            for a_value in python_value:
+                if DEBUG_HTML and subsequent:
+                    rslt += '    ,'
+                else:
+                    subsequent = True
+                rslt += html_element(None, a_value, indent + '    ')
+            rslt += predicate_indent + '</span><br>\n'    
+        elif isinstance(python_value, URI) or isinstance(python_value, BNode):
+            anchor_text = str(python_value) if DEBUG_HTML else ''
+            rslt = predicate_indent + \
+                '<a    %s%shref="%s">%s</a><br>\n' % (class_string, property_string, str(python_value), anchor_text) 
         elif python_value is True or python_value is False:
             rslt = predicate_indent + \
-                ('<span class="rdfa-triple" property="%s" datatype="%s" %s>%s</span><br>\n' % (predicate, XSD+'boolean', one_of_many_string, 'true' if python_value else 'false') if DEBUG_HTML else \
-                 '<span property="%s" datatype="%s" %s>%s</span>\n' % (predicate, XSD+'boolean', one_of_many_string, 'true' if python_value else 'false'))
+                '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'boolean', 'true' if python_value else 'false')
         elif isinstance(python_value, numbers.Number):
             if isinstance(python_value, numbers.Integral):
                 rslt = predicate_indent + \
-                    ('<span class="rdfa-triple" property="%s" datatype="%s" %s>%s</span><br>\n' % (predicate, XSD+'integer', one_of_many_string, python_value)  if DEBUG_HTML else \
-                     '<span property="%s" datatype="%s" %s>%s</span>\n' % (predicate, XSD+'integer', one_of_many_string, python_value) )
+                    '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'integer', python_value) 
             else:
                 rslt = predicate_indent + \
-                    ('<span class="rdfa-triple" property="%s" datatype="%s" %s>%s</span><br>\n' % (predicate, XSD+'double', one_of_many_string, python_value)  if DEBUG_HTML else \
-                     '<span property="%s" datatype="%s" %s>%s</span>\n' % (predicate, XSD+'double', one_of_many_string, python_value))
+                    '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'double', python_value)
         elif isinstance(python_value, basestring):
             rslt = predicate_indent + \
-                ('<span class="rdfa-triple" property="%s" %s>%s</span><br>\n' % (predicate, one_of_many_string, str(python_value)) if DEBUG_HTML else \
-                 '<span property="%s" %s>%s</span>\n' % (predicate, one_of_many_string, str(python_value)) )
+                '<span %s%s>%s</span><br>\n' % (class_string, property_string, str(python_value))
         elif isinstance(python_value, datetime.datetime):
             rslt = predicate_indent + \
-                ('<span class="rdfa-triple" property="%s" datatype="%s" %s>%s</span><br>\n' % (predicate, XSD+'dateTime', one_of_many_string, python_value.isoformat())  if DEBUG_HTML else \
-                 '<span property="%s" datatype="%s" %s>%s</span>\n' % (predicate, XSD+'dateTime', one_of_many_string, python_value.isoformat()) )
+                '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'dateTime', python_value.isoformat()) 
         elif hasattr(python_value, 'keys') and python_value.get('type') == 'graph': #used to return versions
             rslt = predicate_indent + \
-                ('<span class="rdfa-triple" datatype = "graph" property="%s" %s>{\n' % (predicate, one_of_many_string)  if DEBUG_HTML else \
-                 '<span datatype = "graph" property="%s" %s>{\n' % (predicate, one_of_many_string) )
+                '<span %sdatatype = "graph" property="%s" %s>{\n' % (class_string)
             rslt = convert_graph_to_html(python_value['value'], graph_id + '-' + str(graph_count), predicate_indent + '    ')
             graph_count = graph_count+1
             rslt = predicate_indent + '}</span><br>\n'
         elif python_value is None: # TODO: Review with Martin, figure out proper way to handle None value
             rslt = predicate_indent + \
-                ('<span class="rdfa-triple" property="%s" %s>%s</span><br>\n' % (predicate, one_of_many_string, "BAD VALUE: NULL!") if DEBUG_HTML else \
-                 '<span property="%s" %s>%s</span>\n' % (predicate, one_of_many_string, "BAD VALUE: NULL!") )
+                '<span %s%s%s>%s</span><br>\n' % (class_string, property_string, "BAD VALUE: NULL!")
         else:
             raise ValueError('new case? : %s' % python_value)
         return rslt
     for subject, rdf_json_subject_node in document.iteritems():
         if DEBUG_HTML and subject == document.graph_url:
-            result += subject_indent + '<div class="rdfa-description" resource="%s" style="COLOR: red;">\n' % subject
+            result += g_subject_indent + '<div class="rdfa-description" resource="%s" style="COLOR: red;">\n' % subject
         else:
-            result += subject_indent + (('<div class="rdfa-description" resource="%s">\n' % subject) if DEBUG_HTML else \
+            result += g_subject_indent + (('<div class="rdfa-description" resource="%s">\n' % subject) if DEBUG_HTML else \
                                  '<div resource="%s">\n' % subject)
         if DEBUG_HTML:
-            result += subject_indent + '<h2>Subject: <a class = "rdfa-subject" href="%s">%s</a></h2>\n' % (subject, subject)
+            result += g_subject_indent + '<h2>Subject: <a class = "rdfa-subject" href="%s">%s</a></h2>\n' % (subject, subject)
         for predicate, value_array in rdf_json_subject_node.iteritems():
             if DEBUG_HTML:
-                result += predicate_header_indent + '<span class="rdfa-predicate"><b>%s:&nbsp;&nbsp;</b></span>\n' % predicate
-            if isinstance(value_array, (list, tuple)):
-                subsequent = False
-                for python_value in value_array:
-                    if DEBUG_HTML and subsequent:
-                        result += '    ,'
-                    else:
-                        subsequent = True
-                    result += html_element(python_value, True)
-            else:
-                result += html_element(value_array)
-        result += indent + '    </div>\n'
-    result += indent + '</div>'
+                result += g_predicate_header_indent + '<span class="rdfa-predicate"><b>%s:&nbsp;&nbsp;</b></span>\n' % predicate
+            result += html_element(predicate, value_array, g_indent)
+        result += g_indent + '    </div>\n'
+    result += g_indent + '</div>'
     return result
 
 def convert_rdf_json_to_html(document):
