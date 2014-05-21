@@ -156,7 +156,7 @@ def explain_options(environ, start_response):
     origin = environ.get('HTTP_ORIGIN')
     if origin:
         headers.append(('Access-Control-Allow-Origin', origin))
-        headers.append(('Access-Control-Allow-Methods', 'GET, OPTIONS, POST, DELETE'))
+        headers.append(('Access-Control-Allow-Methods', 'GET, OPTIONS, POST, DELETE, PATCH'))
         headers.append(('Access-Control-Allow-Credentials', 'true'))
         headers.append(('Access-Control-Allow-Headers', 'SSSESSIONID, If-Modified-Since, CE-Post-Reason, Content-Type'))
     start_response('200 OK', headers)
@@ -306,7 +306,7 @@ def convert_graph_to_html(document, graph_id = None, g_indent=None):
         predicate_indent = (predicate_header_indent if DEBUG_HTML else subject_indent) + '    '
         if isinstance(python_value, (list, tuple)):
             rslt = predicate_indent + \
-                '<span %s%sdatatype="%s"><br>\n' % (class_string, property_string, RDF+'List') 
+                '<span %s%sdatatype="%s"><br>\n' % (class_string, property_string, RDF+'List')
             subsequent = False
             for a_value in python_value:
                 if DEBUG_HTML and subsequent:
@@ -314,18 +314,18 @@ def convert_graph_to_html(document, graph_id = None, g_indent=None):
                 else:
                     subsequent = True
                 rslt += html_element(None, a_value, indent + '    ')
-            rslt += predicate_indent + '</span><br>\n'    
+            rslt += predicate_indent + '</span><br>\n'
         elif isinstance(python_value, URI) or isinstance(python_value, BNode):
             anchor_text = str(python_value) if DEBUG_HTML else ''
             rslt = predicate_indent + \
-                '<a    %s%shref="%s">%s</a><br>\n' % (class_string, property_string, str(python_value), anchor_text) 
+                '<a    %s%shref="%s">%s</a><br>\n' % (class_string, property_string, str(python_value), anchor_text)
         elif python_value is True or python_value is False:
             rslt = predicate_indent + \
                 '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'boolean', 'true' if python_value else 'false')
         elif isinstance(python_value, numbers.Number):
             if isinstance(python_value, numbers.Integral):
                 rslt = predicate_indent + \
-                    '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'integer', python_value) 
+                    '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'integer', python_value)
             else:
                 rslt = predicate_indent + \
                     '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'double', python_value)
@@ -334,7 +334,7 @@ def convert_graph_to_html(document, graph_id = None, g_indent=None):
                 '<span %s%s>%s</span><br>\n' % (class_string, property_string, str(python_value))
         elif isinstance(python_value, datetime.datetime):
             rslt = predicate_indent + \
-                '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'dateTime', python_value.isoformat()) 
+                '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'dateTime', python_value.isoformat())
         elif hasattr(python_value, 'keys') and python_value.get('type') == 'graph': #used to return versions
             rslt = predicate_indent + \
                 '<span %sdatatype = "graph" property="%s" %s>{\n' % (class_string)
