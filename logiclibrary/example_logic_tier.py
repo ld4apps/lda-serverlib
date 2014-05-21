@@ -565,14 +565,17 @@ class Domain_Logic(object):
     def bad_path(self):
         return (400, [], [('', '4001 - bad path: %s (trailing / or path too short or other problem)' % self.path)])
         
-    def check_input_value(self, rdf_document, predicate, field_errors, value_type=None, required=True):
-        value = rdf_document.get_property(predicate)
+    def check_input_value(self, rdf_document, predicate, field_errors, value_type=None, required=True, subject=None, expected_value=None):
+        value = rdf_document.get_property(predicate, subject)
         if value == None:
             if required:
                 field_errors.append((predicate, 'must provide value'))
             return False
-        elif value_type and not isinstance(value, value_type):
+        if value_type and not isinstance(value, value_type):
             field_errors.append((predicate, '%s must be a %s, type is: %s' % (value, str(value_type), type(value)))) 
+            return False
+        if expected_value and not value == expected_value:
+            field_errors.append((predicate, '%s must be equal to %s value is %s' % (value, expected_value, value))) 
             return False
         return True
 
