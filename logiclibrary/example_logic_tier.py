@@ -477,7 +477,7 @@ class Domain_Logic(object):
         status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
         if status == 200:
             if len(result) == 0:
-                return 404, [], [('', '404 error - no such virtual document %s' % result)]
+                return 404, [], [('', '404 error - no such virtual document %s' % query)]
             elif len(result) == 1:
                 return make_result(result)
             else:
