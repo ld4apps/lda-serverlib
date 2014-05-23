@@ -439,9 +439,7 @@ class Domain_Logic(object):
     def default_resource_group(self):
         return URI(url_policy.construct_url(self.request_hostname, self.tenant)) # default is the root resource (i.e., '/')
 
-    def add_container(self, document, url_template, membership_resource, membership_predicate, member_is_object=False, container_resource_group=None, container_owner=None) :
-        container_url = url_template.format('')
-        new_url = url_template.format('/new')
+    def add_container(self, document, container_url, membership_resource, membership_predicate, member_is_object=False, container_resource_group=None, container_owner=None) :
         if container_resource_group is None:
             container_resource_group = self.default_resource_group()
         document[container_url] = {
@@ -453,19 +451,18 @@ class Domain_Logic(object):
         if container_owner is not None:
             document[container_url][CE+'owner'] = container_owner
 
-    def create_container(self, url_template, membership_resource, membership_predicate, member_is_object=False):
-        container_url = url_template.format('')
+    def create_container(self, container_url, membership_resource, membership_predicate, member_is_object=False):
         document = rdf_json.RDF_JSON_Document ({}, container_url)
-        self.add_container(document, url_template, membership_resource, membership_predicate, member_is_object, None, None)
+        self.add_container(document, container_url, membership_resource, membership_predicate, member_is_object, None, None)
         return document 
         
-    def container_from_membership_resource_in_query_string(self, url_template, membership_predicate, member_is_object):
+    def container_from_membership_resource_in_query_string(self, container_url, membership_predicate, member_is_object):
         if self.query_string.endswith('?non-member-properties'):
             qs = self.query_string[:-22]
         else:
             qs = self.query_string
         membership_resource = self.absolute_url(urllib.unquote(qs))
-        document = self.create_container(url_template, membership_resource, membership_predicate, member_is_object)
+        document = self.create_container(container_url, membership_resource, membership_predicate, member_is_object)
         status, document = self.complete_result_document(document)
         return [status, [], document] 
 
@@ -508,8 +505,7 @@ class Domain_Logic(object):
             container_resouce_group = document.getValue(AC+'resource-group')
             container_owner = document.getValue(CE+'owner')
             container_graph_url = document_url + '/' + container_path_segment
-            template = '%s{0}' % container_graph_url
-            self.add_container(document, template, document_url, membership_predicate, member_is_object, container_resouce_group, container_owner)  
+            self.add_container(document, container_graph_url, document_url, membership_predicate, member_is_object, container_resouce_group, container_owner)  
 
     def add_inverse(self, document, property_predicate, membership_shortname, namespace=None):
         if not namespace:
