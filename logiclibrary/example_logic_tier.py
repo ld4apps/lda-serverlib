@@ -510,7 +510,8 @@ class Domain_Logic(object):
     def add_inverse(self, document, property_predicate, membership_shortname, namespace=None):
         if not namespace:
             namespace = self.namespace
-        query_string = urllib.quote(self.document_url()) 
+        #FB query_string = urllib.quote(self.document_url())
+        query_string = urllib.quote(document.graph_url)
         url = url_policy.construct_url(self.request_hostname, self.tenant, namespace, membership_shortname, query_string=query_string)
         document.set_value(property_predicate, url)
 
