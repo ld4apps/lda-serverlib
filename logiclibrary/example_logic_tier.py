@@ -511,6 +511,10 @@ class Domain_Logic(object):
         if not namespace:
             namespace = self.namespace
         #FB query_string = urllib.quote(self.document_url())
+        #FB  GET http%3A//localhost%3A5001/xdo/webserver/deployments generates:
+        #FB      ce_group: http://localhost:5001/sx/ce_for_deployment?http%3A//localhost%3A5001/xdo/webserver
+        #FB  instead of:
+        #FB      ce_group: http://localhost:5001/sx/ce_for_deployment?http%3A//localhost%3A5001/xdo/webserver_v1
         query_string = urllib.quote(document.graph_url)
         url = url_policy.construct_url(self.request_hostname, self.tenant, namespace, membership_shortname, query_string=query_string)
         document.set_value(property_predicate, url)
