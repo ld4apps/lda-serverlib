@@ -517,7 +517,7 @@ class Domain_Logic(object):
         #FB      ce_group: http://localhost:5001/sx/ce_for_deployment?http%3A//localhost%3A5001/xdo/webserver_v1
         query_string = urllib.quote(document.graph_url)
         url = url_policy.construct_url(self.request_hostname, self.tenant, namespace, membership_shortname, query_string=query_string)
-        document.set_value(property_predicate, url)
+        document.set_value(property_predicate, URI(url))
 
     def create_all_versions_container(self, document):
         history = document.getValues(HISTORY)
