@@ -83,24 +83,26 @@ def get_document(environ, start_response):
             headers.append(('Cache-Control', 'no-cache'))
         if not header_set('Vary', headers):
             headers.append(('Vary', 'Accept, Cookie'))
-    if best_match == 'text/html':
-        body = convert_rdf_json_to_html(body)
-        return make_text_response(status, headers, body, best_match, start_response)
-    elif best_match == 'application/json':
-        if not hasattr(body, 'graph_url'): # not an rdf_json document - probably an error condition
-            body = json.dumps(body, cls=rdf_json.RDF_JSON_Encoder)
+        if best_match == 'text/html':
+            body = convert_rdf_json_to_html(body)
+            return make_text_response(status, headers, body, best_match, start_response)
+        elif best_match == 'application/json':
+            if not hasattr(body, 'graph_url'): # not an rdf_json document - probably an error condition
+                body = json.dumps(body, cls=rdf_json.RDF_JSON_Encoder)
+            else:
+                body = domain_logic.convert_rdf_json_to_compact_json(body)
+            return make_json_response(status, headers, body, best_match, start_response)
+        elif best_match == 'application/rdf+json':
+            body = rdf_json.normalize(body)
+            return make_json_response(status, headers, body, best_match, start_response)
+        elif best_match == 'application/rdf+xml' or best_match == 'text/turtle' or best_match == 'application/x-turtle':
+            body = convert_rdf_json_to_rdf_requested(body, best_match)
+            return make_text_response(status, headers, body, best_match, start_response)
         else:
-            body = domain_logic.convert_rdf_json_to_compact_json(body)
-        return make_json_response(status, headers, body, best_match, start_response)
-    elif best_match == 'application/rdf+json':
-        body = rdf_json.normalize(body)
-        return make_json_response(status, headers, body, best_match, start_response)
-    elif best_match == 'application/rdf+xml' or best_match == 'text/turtle' or best_match == 'application/x-turtle':
-        body = convert_rdf_json_to_rdf_requested(body, best_match)
-        return make_text_response(status, headers, body, best_match, start_response)
+            return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
     else:
-        return make_json_response(status, headers, body, 'application/rdf+json+ce' if status == 200 else 'application/json', start_response)
-
+        return make_json_response(status, headers, body, 'application/json', start_response)
+        
 def delete_document(environ, start_response):
     domain_logic = Domain_Logic(environ)
     status, headers, body = domain_logic.delete_document()
