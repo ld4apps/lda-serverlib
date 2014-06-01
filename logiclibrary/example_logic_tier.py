@@ -480,7 +480,7 @@ class Domain_Logic(object):
             else:
                 return 404, [], [('', '404 error - ambiguous virtual document - should be a LDPC collection?')]
         else:
-            return (status, result)
+            return status, [], result
 
     def resource_from_object_in_query_string(self, membership_predicate, member_is_object=False):
         membership_resource = self.absolute_url(urllib.unquote(self.query_string))
