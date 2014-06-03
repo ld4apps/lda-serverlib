@@ -69,29 +69,39 @@ ID = CE+'id'
 
 SYSTEM_PROPERTIES = (CREATOR, CREATED, MODIFICATIONCOUNT, LASTMODIFIED, LASTMODIFIEDBY, HISTORY, '@id', '_id')
         
-def create_document(user, rdf_json, public_hostname, tenant, namespace, resource_id=None):
-    # create storage format and put it in the database.
-    # rdf_json is the document to be stored, in rdf_json format
-    # The storage format is the following:
-    # {  '_id': docId (may be provided by caller in '' subject in json_ld, or a value provided here)
-    #    '_modificationCount' : number
-    #    '@id': document_url (with domain replaced by "urn:ce:" and periods escaped to %2E)
-    #    '@graph' : 
-    #       [
-    #           {   '@id' : subject_url, (with domain replaced by "urn:ce:" if the url is on the same site and periods escaped to %2E)
-    #               <predicate> : {'type' : <rdf-json type>, 'value' : <value>, 'datatype'=<datatype>}
-    #               ... repeat ...
-    #               },
-    #           {
-    #               ... repeat for additional subjects ...
-    #               }
-    #           ]
-    #   }
+def create_document(user, document, public_hostname, tenant, namespace, resource_id=None):
+    """
+    Create a new document in the collection identified by 'public_hostname', 'tenant', and 'namespace'.
+    
+    The 'document' argument specifies the new document to be stored, in rdf_json format. Before it's put
+    into the database, the rdf_json is first converted to the following storage format:
+    
+      {
+        '_id': docId (may be provided by caller in '' subject in json_ld, or a value provided here)
+        '_modificationCount': number
+        '@id': document_url (with domain replaced by "urn:ce:" and periods escaped to %2E)
+        '@graph': [
+          {
+            '@id': subject_url, (with domain replaced by "urn:ce:" if the url is on the same site and periods escaped to %2E)
+            <predicate>: {'type': <rdf-json type>, 'value': <value>, 'datatype'=<datatype>}
+            ... repeat ...
+          },
+          {
+            ... repeat for additional subjects ...
+          }
+        ]
+      }
+    
+    Return: 
+        Success: (201, <new-document-url:string>, <new-document:rdf_json>)
+        Error: (<status-code:int>, None, <errror-msg:string>)
+    """
     if resource_id == None:
         resource_id = make_objectid()
     document_url = url_policy.construct_url(public_hostname, tenant, namespace, resource_id)
-    subject_array = make_subject_array(rdf_json, public_hostname, document_url)
-    if subject_array is None: return (400, None, 'cannot set system property')
+    subject_array = make_subject_array(document, public_hostname, document_url)
+    if subject_array is None:
+        return 400, None, 'cannot set system property'
     timestamp = get_timestamp()
     json_ld = {'_id' : resource_id, '@graph': subject_array, '@id' : fix_up_url_for_storage('', public_hostname, document_url)}
     json_ld['_modificationCount'] =  0
@@ -100,10 +110,20 @@ def create_document(user, rdf_json, public_hostname, tenant, namespace, resource
     try:
         MONGO_DB[make_collection_name(tenant, namespace)].insert(json_ld)
     except DuplicateKeyError:
-        return (409, document_url, 'duplicate document id: %s' % resource_id)
-    return (201, document_url, rdf_json_from_storage(json_ld, public_hostname)) # status_code, headers, body (which could contain error info)
+        return 409, None, 'duplicate document id: %s' % resource_id
+    return 201, document_url, rdf_json_from_storage(json_ld, public_hostname) # status_code, headers, body (which could contain error info)
 
 def execute_query(user, query, public_hostname, tenant, namespace, projection=None):
+    """
+    Execute the specified 'query' against the collection identified by 'public_hostname', 'tenant', 
+    and 'namespace'.
+    
+    This fuction always succeeds and returns a list of 0 or more matching documents.
+    
+    Return: 
+        Success: (200, [<result-document1:rdf_json>, <result-document2:rdf_json>, ...])
+        Error: no errors
+    """
     collection_url = url_policy.construct_url(public_hostname, tenant, namespace, None)
     query = query_to_storage(query, public_hostname, collection_url)
     #logging.debug(query)
@@ -114,20 +134,38 @@ def execute_query(user, query, public_hostname, tenant, namespace, projection=No
         cursor = MONGO_DB[make_collection_name(tenant, namespace)].find(query, projection)       
     result = get_query_result(cursor, public_hostname)
     #logging.debug(result)
-    return (200, result)
+    return 200, result
 
 def get_document(user, public_hostname, tenant, namespace, documentId):
+    """
+    Get the document specified by 'public_hostname', 'tenant', 'namespace', and 'document_id'.
+    
+    Return: 
+        Success: (200, <result-document:rdf_json>)
+        Error: (<status-code:int>, <errror-msg:string>)
+    """
     cursor = MONGO_DB[make_collection_name(tenant, namespace)].find({'_id': documentId})
     try: document = cursor.next()
     except StopIteration: document = None
     if document is not None:
         document = rdf_json_from_storage(document, public_hostname)
-        return (200, document)
+        return 200, document
     else:
-        return (404, ['404 not found'])
+        return 404, '404 not found'
 
 def delete_document(user, public_hostname, tenant, namespace, document_id):
+    """
+    Delete the document specified by 'public_hostname', 'tenant', 'namespace', and 'document_id'.
+    
+    If the document doesn't exist, this fuction is a NO-OP.
+
+    Return: 
+        Success: (200, None)
+        Error: no errors
+    """
     MONGO_DB[make_collection_name(tenant, namespace)].remove(document_id, True)
+    #TODO: check how many things Mongo actually deleted...
+    return 200, None
     
 def drop_collection(user, public_hostname, tenant, namespace):
     MONGO_DB[make_collection_name(tenant, namespace)].drop()
@@ -154,13 +192,35 @@ def get_prior_versions(user, public_hostname, tenant, namespace, history):
     cursor = MONGO_DB[make_collection_name(tenant, namespace + '_history')].find(query)
     result = get_query_result(cursor, public_hostname)
     #logging.debug(result)
-    return (200, result)
+    return 200, result
         
 def patch_document(user, document, public_hostname, tenant, namespace, document_id):
-    # note that creating a history document is idempotent and safe (in practice, if not in principle). This means that if there is a failure after creating 
-    # the history document, and before the patch operation, the whole thing can be safely re-run. This may result in two identical history documents, where
-    # nomally there would be a difference between any two history documents, but this is perfectly harmless. Only the history document whose ID is referenced 
-    # in the successful patch operation will ever be looked at, so the other is just wasting a little disk space.
+    """
+    Patch the document specified by 'public_hostname', 'tenant', 'namespace', and 'document_id' with the
+    content in 'document'.
+    
+    The patch 'document' must contain a list with 2 entries:
+    
+        [<modification-count:int>, <patch-document:rdf_json>]
+
+    The modification count must be the value of the resource's modification count that was last read by the
+    client in a GET of the resource. If the modification count in the database does not match the modification
+    count provided by the client, the update query will fail and an HTTP 409 (Conflict) status code will be
+    returned. If the update query succeeds, the modification count in the database will be incremented by 1,
+    the updates will be made, and an HTTP 200 (OK) status code will be returned. A history document will also
+    be created to capture the previous state of the resource.
+   
+    Note that creating a history document is idempotent and safe (in practice, if not in principle). 
+    This means that if there is a failure after creating the history document, and before the patch operation,
+    the whole thing can be safely re-run. This may result in two identical history documents, where nomally
+    there would be a difference between any two history documents, but this is perfectly harmless. Only the
+    history document whose ID is referenced in the successful patch operation will ever be looked at, so the
+    other is just wasting a little disk space.
+    
+    Return: 
+        Success: (200, None)
+        Error: (<status-code:int>, <errror-msg:string>)
+    """
     status, history_document_id = create_history_document(user, public_hostname, tenant, namespace, document_id)
     if status == 201:                        
         mod_count = document[0]
@@ -179,7 +239,7 @@ def patch_document(user, document, public_hostname, tenant, namespace, document_
             if last_err['n'] == 1:
                 mod_count = mod_count + 1
             else:
-                return (409, 'unexpected update count %s' % last_err)        
+                return 409, 'unexpected update count %s' % last_err        
         for subject_url, subject_node in new_values.iteritems(): # have to patch one subject at a time, unfortunately 
             if subject_node is None: continue
             # first assume the subject is already in the @graph array, and construct a query that will modify it
@@ -191,7 +251,7 @@ def patch_document(user, document, public_hostname, tenant, namespace, document_
             subject_sets = {'_lastModified' : get_timestamp(), '_lastModifiedBy': user}
             subject_unsets = {}
             for predicate, value_array in subject_node.iteritems():
-                if predicate in SYSTEM_PROPERTIES or predicate == '_id': return (400, 'cannot set system property')
+                if predicate in SYSTEM_PROPERTIES or predicate == '_id': return 400, 'cannot set system property'
                 if isinstance(value_array, (list, tuple)):
                     if len(value_array) > 0:
                         subject_sets['@graph.$.' + predicate_to_mongo(predicate)] = [storage_value_from_rdf_json(value, public_hostname, document_url) for value in value_array]
@@ -213,7 +273,7 @@ def patch_document(user, document, public_hostname, tenant, namespace, document_
                 subject_sets = {'_lastModified' :get_timestamp(), '_lastModifiedBy': user}
                 new_subject = {'@id': fix_up_url_for_storage(subject_url, public_hostname, document_url)}
                 for predicate, value_array in subject_node.iteritems():
-                    if predicate in SYSTEM_PROPERTIES or predicate == '_id': return (400, 'cannot set system property')
+                    if predicate in SYSTEM_PROPERTIES or predicate == '_id': return 400, 'cannot set system property'
                     if isinstance(value_array, (list, tuple)):
                         if len(value_array) > 0:
                             new_subject[predicate_to_mongo(predicate)] = [storage_value_from_rdf_json(value, public_hostname, document_url) for value in value_array]                        
@@ -224,10 +284,10 @@ def patch_document(user, document, public_hostname, tenant, namespace, document_
                 if last_err['n'] == 1:
                     mod_count = mod_count + 1
                 else:
-                    return (409, 'unexpected update count %s' % last_err) 
-        return (200, None)
+                    return 409, 'unexpected update count %s' % last_err 
+        return 200, None
     else:
-        return (status, None)
+        return status, 'failed to create history document'
 
 def make_objectid():
     global next_id

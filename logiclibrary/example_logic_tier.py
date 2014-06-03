@@ -92,15 +92,15 @@ class Domain_Logic(object):
         if status == 200:
             return self.insert_document(container, document, document_id)
         else:
-            return (status, headers, container)
+            return status, headers, container
         
     def insert_document(self, container, document, document_id=None):
         if self.user is None:
-            return (401, [], None)
+            return 401, [], None
         else:
             if CHECK_ACCESS_RIGHTS:
                 if not self.permissions(container) & AC_C:
-                    return [403, [], 'not authorized']
+                    return 403, [], 'not authorized'
             document = rdf_json.RDF_JSON_Document(document, '')
             self.complete_document_for_container_insertion(document, container)
             self.complete_document_for_storage_insertion(document)
@@ -111,7 +111,7 @@ class Domain_Logic(object):
                     self.generate_change_event(CREATION_EVENT, location)
                 # Todo: fix up self.document_id, self.path, self.path_parts to match location url of new document
                 self.complete_result_document(result)
-            return (status, [('Location', str(location))], result)
+            return status, [('Location', str(location))], result
 
     def put_document(self, document):
         return(405, [], [('', 'PUT not allowed')])
@@ -133,12 +133,12 @@ class Domain_Logic(object):
         #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
         #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
         if self.user is None:
-            return (401, None, None)
+            return 401, None, None
         else:
             if not self.namespace or self.document_id: #trailing / or other problem
                 return self.bad_path()
             status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
-            return (status, [], result)
+            return status, [], result
 
     def execute_action(self, body):
         # user is the URL that identifies the user
@@ -155,9 +155,9 @@ class Domain_Logic(object):
         #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
         #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
         if self.user is None:
-            return (401, None, None)
+            return 401, None, None
         else:
-            return (400, [], 'unknown action')
+            return 400, [], 'unknown action'
 
     def permissions(self, document):
         owner = document.getValue(CE+'owner')
@@ -194,26 +194,28 @@ class Domain_Logic(object):
         #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
         #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
         if not CHECK_ACCESS_RIGHTS and self.user is None:
-            return (401, None, None)
+            return 401, None, None
         else:
             if self.document_id is None:
                 return self.get_collection()
             if not self.namespace: 
-                return [404, [], 'no resource with the URL: %s' % self.request_url()]
+                return 404, [], 'no resource with the URL: %s' % self.request_url()
             status, document = operation_primitives.get_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
             if status == 200:
                 # we found the document, but is the user entitled to see it?
                 if CHECK_ACCESS_RIGHTS:
                     if not self.permissions(document) & AC_R:
-                        return [403, [], 'not authorized']
+                        return 403, [], 'not authorized'
                 status, document = self.complete_result_document(document)
-            return [status, [], document]
+            else:
+                document = [document]
+            return status, [], document
 
     def get_collection(self):
         # This method returns a storage collection as a Basic Profile Container.
         # TODO: Need to support paging for large collections
         if self.user is None:
-            return (401, [], [])
+            return 401, [], []
         else:
             if not self.namespace: # nope, not a pre-existing container resource either
                 return self.bad_path()
@@ -254,7 +256,7 @@ class Domain_Logic(object):
         #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
         #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
         if self.user is None:
-            return (401, [], [])
+            return 401, [], []
         else:
             if self.document_id is None:
                 return self.drop_collection()
@@ -264,11 +266,11 @@ class Domain_Logic(object):
             if self.change_tracking:
                 resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
                 self.generate_change_event(DELETION_EVENT, resource_url)
-            return (204, [], [])    
+            return 204, [], []    
         
     def drop_collection(self):
         if self.user is None:
-            return (401, [], [])
+            return 401, [], []
         else:
             if not self.namespace: # nope, not a pre-existing container resource either
                 return self.bad_path()
@@ -278,7 +280,7 @@ class Domain_Logic(object):
             document_namespace = self.tenant + '/' + self.namespace
             if self.change_tracking and document_namespace in self.trs_builders:
                 del self.trs_builders[document_namespace]
-            return (204, [], [])    
+            return 204, [], []    
     
     def patch_document(self, request_body):
         # user is the URL that identifies the user
@@ -294,28 +296,28 @@ class Domain_Logic(object):
         #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
         #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
         if self.user is None:
-            return (401, [], [])
+            return 401, [], []
         else:
             if not self.namespace: #trailing / or other problem
                 return self.bad_path()
             resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
             if not (isinstance(request_body, list) and len(request_body) == 2 and isinstance(request_body[0], int)): 
-                return (400, [], [('', 'patch body must be array of form [modification_count, rdf/json object]')])
+                return 400, [], [('', 'patch body must be array of form [modification_count, rdf/json object]')]
             self.preprocess_properties_for_storage_insertion(rdf_json.RDF_JSON_Document(request_body[1], resource_url))
             mod_count = request_body[0]
             if not (isinstance(mod_count, numbers.Number) and mod_count == (mod_count | 0)):
-                return (400, [], [])
+                return 400, [], []
             status, result = operation_primitives.patch_document(self.user, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)   
             if self.change_tracking and status == 200:
                 self.generate_change_event(MODIFICATION_EVENT, resource_url)
             if(status == 200):
                 get_status, headers, new_document = self.get_document()
                 if(get_status == 200):
-                    return (200, headers, new_document)
+                    return 200, headers, new_document
                 else:
-                    return (200, [], 'Patch was successful but getting the document after returned %s' % get_status)                
+                    return 200, [], 'Patch was successful but getting the document after returned %s' % get_status                
             else:
-                return (status, [], [result])
+                return status, [], [result]
 
     def document_url(self):
         return url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
@@ -357,7 +359,7 @@ class Domain_Logic(object):
                 else:
                     query = {'_any': {str(ldp_isMemberOf) : ldp_resource}}
         else:
-            return (200, container)
+            return 200, container
         if CHECK_ACCESS_RIGHTS:
             resource_groups = self.resource_groups()
             query['_any2'] = {}
@@ -374,9 +376,9 @@ class Domain_Logic(object):
         status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
         if status == 200:
             self.add_member_detail(container, result)
-            return (200, container)
+            return 200, container
         else:
-            return (status, result)
+            return status, result
 
     def complete_container(self, document):
         if self.query_string.endswith('non-member-properties'):
@@ -393,7 +395,7 @@ class Domain_Logic(object):
         else: 
             if len(self.extra_path_segments) == 1 and self.extra_path_segments[0] == 'allVersions' and not self.query_string: # client wants history collection
                 status, document = self.create_all_versions_container(document)
-                return (status, document)
+                return status, document
         request_url = self.request_url()
         if document.graph_url != request_url: #usually a bad thing, unless it's an owned container that was being asked for
             owned_container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id, self.extra_path_segments)
@@ -464,7 +466,7 @@ class Domain_Logic(object):
         membership_resource = self.absolute_url(urllib.unquote(qs))
         document = self.create_container(container_url, membership_resource, membership_predicate, member_is_object)
         status, document = self.complete_result_document(document)
-        return [status, [], document] 
+        return status, [], document 
 
     def query_resource_document(self, membership_resource, membership_predicate, member_is_object, make_result):
         if member_is_object:
@@ -539,9 +541,9 @@ class Domain_Logic(object):
                 document_url = version.getValue(CE+'versionOf')
                 del version[version.graph_url]
                 version.default_subject_url = document_url
-            return (200, result_document)
+            return 200, result_document
         else:
-            return (status, query_result)
+            return status, query_result
 
     def generate_change_event(self, event_type, resource_uri):
         document_namespace = self.tenant + '/' + self.namespace #Todo: - do this better
@@ -564,7 +566,7 @@ class Domain_Logic(object):
         return compact_json
 
     def bad_path(self):
-        return (400, [], [('', '4001 - bad path: %s (trailing / or path too short or other problem)' % self.path)])
+        return 400, [], [('', '4001 - bad path: %s (trailing / or path too short or other problem)' % self.path)]
         
     def check_input_value(self, rdf_document, predicate, field_errors, value_type=None, required=True, subject=None, expected_value=None):
         value = rdf_document.get_property(predicate, subject)
