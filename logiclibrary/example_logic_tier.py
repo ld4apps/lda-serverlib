@@ -86,12 +86,8 @@ class Domain_Logic(object):
         
         The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
           201 - Created           => headers is a list of headers to return to the client. It should contain at least a location entry with the URL 
-                                     of the newly-created resource. If no content_type header is given, it will be set to 'application/ld+json'
+                                     of the newly-created resource. If no content_type header is given, it will be set to 'application/rdf+json+ce'
                                      body may be an empty list or a dictionary that contains the ld+json representaton of the created object
-          401 - Unauthorized      => The values of headers and body are ignored
-          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
           others                  => headers may be an empty list or may optionally include headers to return to the client
                                      body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error
@@ -103,26 +99,25 @@ class Domain_Logic(object):
             return status, headers, container
         
     def insert_document(self, container, document, document_id=None):
-        if self.user is None:
-            return 401, [], None
-        else:
-            if CHECK_ACCESS_RIGHTS:
-                if not self.permissions(container) & AC_C:
-                    return 403, [], 'not authorized'
-            document = rdf_json.RDF_JSON_Document(document, '')
-            self.complete_document_for_container_insertion(document, container)
-            self.complete_document_for_storage_insertion(document)
-            self.preprocess_properties_for_storage_insertion(document)
-            status, location, result = operation_primitives.create_document(self.user, document, self.request_hostname, self.tenant, self.namespace, document_id)
-            if status ==201:
-                if self.change_tracking:
-                    self.generate_change_event(CREATION_EVENT, location)
-                # Todo: fix up self.document_id, self.path, self.path_parts to match location url of new document
-                self.complete_result_document(result)
+        if CHECK_ACCESS_RIGHTS:
+            if not self.permissions(container) & AC_C:
+                return 403, [], [('', 'not authorized')]
+        document = rdf_json.RDF_JSON_Document(document, '')
+        self.complete_document_for_container_insertion(document, container)
+        self.complete_document_for_storage_insertion(document)
+        self.preprocess_properties_for_storage_insertion(document)
+        status, location, result = operation_primitives.create_document(self.user, document, self.request_hostname, self.tenant, self.namespace, document_id)
+        if status == 201:
+            if self.change_tracking:
+                self.generate_change_event(CREATION_EVENT, location)
+            # Todo: fix up self.document_id, self.path, self.path_parts to match location url of new document
+            self.complete_result_document(result)
             return status, [('Location', str(location))], result
+        else:
+            return status, [], [('', result)]
 
     def put_document(self, document):
-        return(405, [], [('', 'PUT not allowed')])
+        return 405, [], [('', 'PUT not allowed')]
             
     def execute_query(self, query):
         """
@@ -136,23 +131,16 @@ class Domain_Logic(object):
         
         The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
           200 - OK                => headers is a list of headers to return to the client. If no content_type header is given, it will be set to 
-                                     'application/ld+json'
+                                     'application/rdf+json+ce'
                                      body may be an empty list or a dictionary that contains the json representaton of the query result
-          401 - Unauthorized      => The values of headers and body are ignored
-          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
           others                  => headers may be an empty list or may optionally include headers to return to the client
                                      body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error
         """ 
-        if self.user is None:
-            return 401, None, None
-        else:
-            if not self.namespace or self.document_id: #trailing / or other problem
-                return self.bad_path()
-            status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
-            return status, [], result
+        if not self.namespace or self.document_id: #trailing / or other problem
+            return self.bad_path()
+        status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
+        return status, [], result
 
     def execute_action(self, body):
         """
@@ -163,20 +151,13 @@ class Domain_Logic(object):
         
         The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
           200 - OK                => headers is a list of headers to return to the client. If no content_type header is given, it will be set to 
-                                     'application/ld+json'
+                                     'application/rdf+json+ce'
                                      body may be an empty list or a dictionary that contains the json representaton of the query result
-          401 - Unauthorized      => The values of headers and body are ignored
-          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
           others                  => headers may be an empty list or may optionally include headers to return to the client
                                      body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error 
         """
-        if self.user is None:
-            return 401, None, None
-        else:
-            return 400, [], 'unknown action'
+        return 400, [], [('', 'unknown action')]
 
     def permissions(self, document):
         owner = document.get_value(CE+'owner')
@@ -205,44 +186,34 @@ class Domain_Logic(object):
         
         The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
           200 - OK                => headers is a list of headers to return to the client. If no content_type header is given, it will be set to 
-                                     'application/ld+json'
+                                     'application/rdf+json+ce'
                                      body is a dictionary that contains the json (or ld+json) representaton of the resource
-          401 - Unauthorized      => The values of headers and body are ignored
-          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
           others                  => headers may be an empty list or may optionally include headers to return to the client
                                      body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error
         """ 
-        if not CHECK_ACCESS_RIGHTS and self.user is None:
-            return 401, None, None
-        else:
-            if self.document_id is None:
-                return self.get_collection()
-            if not self.namespace: 
-                return 404, [], 'no resource with the URL: %s' % self.request_url()
-            status, document = operation_primitives.get_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
-            if status == 200:
-                # we found the document, but is the user entitled to see it?
-                if CHECK_ACCESS_RIGHTS:
-                    if not self.permissions(document) & AC_R:
-                        return 403, [], 'not authorized'
-                status, document = self.complete_result_document(document)
-            else:
-                document = [document]
+        if self.document_id is None:
+            return self.get_collection()
+        if not self.namespace: 
+            return 404, [], [('', 'no resource with the URL: %s' % self.request_url())]
+        status, document = operation_primitives.get_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
+        if status == 200:
+            # we found the document, but is the user entitled to see it?
+            if CHECK_ACCESS_RIGHTS:
+                if not self.permissions(document) & AC_R:
+                    return 403, [], [('', 'not authorized')]
+            status, document = self.complete_result_document(document)
             return status, [], document
+        else:
+            return status, [], [('', document)]
 
     def get_collection(self):
         """
         This method returns a storage collection as a Basic Profile Container.
         TODO: Need to support paging for large collections
         """
-        if self.user is None:
-            return 401, [], []
-        else:
-            if not self.namespace: # nope, not a pre-existing container resource either
-                return self.bad_path()
+        if not self.namespace: # nope, not a pre-existing container resource either
+            return self.bad_path()
         # TODO: What access control specs govern these "built-in" collections? Who can see them? What resource-group are they part of?
         container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace)
         container_properties = { RDF+'type': URI(LDP+'DirectContainer'),
@@ -265,7 +236,7 @@ class Domain_Logic(object):
                 if len(member_values) != 0:
                     container_properties[LDP+'member'] = member_values
             else:
-                return status, [], results
+                return status, [], [('', results)]
         return status, [], document
                 
     def delete_document(self):
@@ -274,40 +245,30 @@ class Domain_Logic(object):
         
         The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
           204 - No content        => Successful delete. Headers is an optional list of headers to return to the client. 
-          401 - Unauthorized      => The values of headers and body are ignored
-          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
           others                  => headers may be an empty list or may optionally include headers to return to the client
                                      body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error
         """ 
-        if self.user is None:
-            return 401, [], []
-        else:
-            if self.document_id is None:
-                return self.drop_collection()
-            if not self.namespace: #trailing / or other problem
-                return self.bad_path() 
-            operation_primitives.delete_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
-            if self.change_tracking:
-                resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
-                self.generate_change_event(DELETION_EVENT, resource_url)
-            return 204, [], []    
+        if self.document_id is None:
+            return self.drop_collection()
+        if not self.namespace: #trailing / or other problem
+            return self.bad_path() 
+        status, err_msg = operation_primitives.delete_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
+        if self.change_tracking:
+            resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
+            self.generate_change_event(DELETION_EVENT, resource_url)
+        return status, [], [('', err_msg)] if err_msg else []   
         
     def drop_collection(self):
-        if self.user is None:
-            return 401, [], []
-        else:
-            if not self.namespace: # nope, not a pre-existing container resource either
-                return self.bad_path()
-            operation_primitives.drop_collection(self.user, self.request_hostname, self.tenant, self.namespace)
-            operation_primitives.drop_collection(self.user, self.request_hostname, self.tenant, self.namespace + '_history')
-            operation_primitives.drop_collection(self.user, self.request_hostname, self.tenant, self.namespace + '_tracking')
-            document_namespace = self.tenant + '/' + self.namespace
-            if self.change_tracking and document_namespace in self.trs_builders:
-                del self.trs_builders[document_namespace]
-            return 204, [], []    
+        if not self.namespace: # nope, not a pre-existing container resource either
+            return self.bad_path()
+        operation_primitives.drop_collection(self.user, self.request_hostname, self.tenant, self.namespace)
+        operation_primitives.drop_collection(self.user, self.request_hostname, self.tenant, self.namespace + '_history')
+        operation_primitives.drop_collection(self.user, self.request_hostname, self.tenant, self.namespace + '_tracking')
+        document_namespace = self.tenant + '/' + self.namespace
+        if self.change_tracking and document_namespace in self.trs_builders:
+            del self.trs_builders[document_namespace]
+        return 204, [], []    
     
     def patch_document(self, request_body):
         """
@@ -319,37 +280,30 @@ class Domain_Logic(object):
         The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
           200 - OK                => Successful patch. Headers is an optional list of headers to return to the client. 
                                      body is a dictionary that may contain the ld+json representaton of the patched resource
-          401 - Unauthorized      => The values of headers and body are ignored
-          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
           others                  => headers may be an empty list or may optionally include headers to return to the client
                                      body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error
         """ 
-        if self.user is None:
-            return 401, [], []
-        else:
-            if not self.namespace: #trailing / or other problem
-                return self.bad_path()
-            resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
-            if not (isinstance(request_body, list) and len(request_body) == 2 and isinstance(request_body[0], int)): 
-                return 400, [], [('', 'patch body must be array of form [modification_count, rdf/json object]')]
-            self.preprocess_properties_for_storage_insertion(rdf_json.RDF_JSON_Document(request_body[1], resource_url))
-            mod_count = request_body[0]
-            if not (isinstance(mod_count, numbers.Number) and mod_count == (mod_count | 0)):
-                return 400, [], []
-            status, result = operation_primitives.patch_document(self.user, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)   
-            if self.change_tracking and status == 200:
-                self.generate_change_event(MODIFICATION_EVENT, resource_url)
-            if(status == 200):
-                get_status, headers, new_document = self.get_document()
-                if(get_status == 200):
-                    return 200, headers, new_document
-                else:
-                    return 200, [], 'Patch was successful but getting the document after returned %s' % get_status                
+        if not self.namespace: #trailing / or other problem
+            return self.bad_path()
+        resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
+        if not (isinstance(request_body, list) and len(request_body) == 2 and isinstance(request_body[0], int)): 
+            return 400, [], [('', 'patch body must be array of form [modification_count, rdf/json object]')]
+        self.preprocess_properties_for_storage_insertion(rdf_json.RDF_JSON_Document(request_body[1], resource_url))
+        mod_count = request_body[0]
+        if not (isinstance(mod_count, numbers.Number) and mod_count == (mod_count | 0)):
+            return 400, [], [('', 'patch modification_count must be a number')]
+        status, result = operation_primitives.patch_document(self.user, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)   
+        if self.change_tracking and status == 200:
+            self.generate_change_event(MODIFICATION_EVENT, resource_url)
+        if(status == 200):
+            get_status, headers, new_document = self.get_document()
+            if(get_status == 200):
+                return 200, headers, new_document
             else:
-                return status, [], [result]
+                return 200, [], [('', 'Patch was successful but getting the document after returned %s' % get_status)]              
+        else:
+            return status, [], [('', result)]
 
     def document_url(self):
         return url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
@@ -410,7 +364,7 @@ class Domain_Logic(object):
             self.add_member_detail(container, result)
             return 200, container
         else:
-            return status, result
+            return status, [('', result)]
 
     def complete_container(self, document):
         if self.query_string.endswith('non-member-properties'):
@@ -439,7 +393,7 @@ class Domain_Logic(object):
         else:
             status = 200
         if document.graph_url != self.request_url():
-            return 404, 'no document matching that url: %s , graph_url: %s' % (self.request_url(), document.graph_url)
+            return 404, [('', 'no document matching that url: %s , graph_url: %s' % (self.request_url(), document.graph_url))]
         else:
             return status, document
                     
@@ -514,7 +468,7 @@ class Domain_Logic(object):
             else:
                 return 404, [], [('', '404 error - ambiguous virtual document - should be a LDPC collection?')]
         else:
-            return status, [], result
+            return status, [], [('', result)]
 
     def resource_from_object_in_query_string(self, membership_predicate, member_is_object=False):
         membership_resource = self.absolute_url(urllib.unquote(self.query_string))
