@@ -40,8 +40,12 @@ class Domain_Logic(object):
             self.trs_builders = {}
             
     def recurse(self, function, namespace=None, document_id=None, extra_path_segments=None, query_string=None):
-        # Perform a get operation with the same host-name, tenant and name-space, but new document_id, extra_segements and query_string
-        # One implementation option would be to make a new instance of Domain_Logic and give it a new environ dict copy. This implementation is slightly cheaper/messier
+        """
+        Perform an operation with the same host-name, tenant and name-space, but new document_id, extra_segements and query_string.
+        
+        One implementation option would be to make a new instance of Domain_Logic and give it a new environ dict copy.
+        This implementation is slightly cheaper/messier.
+        """
         original_namespace = self.namespace
         original_document_id = self.document_id
         original_path = self.path
@@ -61,7 +65,7 @@ class Domain_Logic(object):
             self.path = '/'.join(self.path_parts)
             if query_string is not None:
                 self.query_string = query_string    
-            status, headers, container = function()
+            status, headers, document = function()
         finally: 
             self.namespace = original_namespace
             self.document_id = original_document_id
@@ -69,25 +73,29 @@ class Domain_Logic(object):
             self.extra_path_segments = original_extra_path_segments
             self.query_string = original_query_string
             self.path_parts = original_path_parts
-        return status, headers, container
+        return status, headers, document
 
     def recursive_get_document(self, namespace=None, document_id=None, extra_path_segments=None, query_string=None):
         return self.recurse(self.get_document, namespace, document_id, extra_path_segments, query_string)
         
     def create_document(self, document, document_id=None):
-        # this method is called when a POST is made that means 'create'
-        # document is a Python dictionary that was created from a json (ld_json) string in the request
-        # The return value is a triple of (status, headers, body). The values of headers and body depends on the status
-        # 201 - Create            => headers is a list of headers to return to the client. It should contain at least a location entry with the URL 
-        #                            of the newly-created resource. If no content_type header is given, it will be set to 'application/ld+json'
-        #                            body may be an empty list or a dictionary that contains the ld+json representaton of the created object
-        # 401 - Unauthorized      => The values of headers and body are ignored
-        # 400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
-        # others                  => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
+        """
+        This method is called when a POST is made that means 'create'.
+        
+        The 'document' argument is a Python dictionary that was created from a rdf/json (ld_json) string in the request.
+        
+        The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
+          201 - Created           => headers is a list of headers to return to the client. It should contain at least a location entry with the URL 
+                                     of the newly-created resource. If no content_type header is given, it will be set to 'application/ld+json'
+                                     body may be an empty list or a dictionary that contains the ld+json representaton of the created object
+          401 - Unauthorized      => The values of headers and body are ignored
+          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
+          others                  => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error
+        """ 
         status, headers, container = self.recursive_get_document(query_string=self.query_string+'?non-member-properties' if self.query_string else 'non-member-properties')
         if status == 200:
             return self.insert_document(container, document, document_id)
@@ -117,21 +125,27 @@ class Domain_Logic(object):
         return(405, [], [('', 'PUT not allowed')])
             
     def execute_query(self, query):
-        # queries are safe and idempotent. That is, they do not have side-effects, and (weaker and implied by safe) the result of doing them
-        # muultiple times is the same as doing them once. In that sense, they are similar to a GET, but done via POST.
-        # user is the URL that identifies the user
-        # query is a Python dictionary that was created from a json string in the request. The format of the JSON will depend on the database back-end
-        # The return value is a triple of (status, headers, body). The values of headers and body depends on the status
-        # 200 - OK                => headers is a list of headers to return to the client. If no content_type header is given, it will be set to 
-        #                            'application/ld+json'
-        #                            body may be an empty list or a dictionary that contains the json representaton of the query result
-        # 401 - Unauthorized      => The values of headers and body are ignored
-        # 400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
-        # others                  => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
+        """
+        Execute the specified query.
+        
+        Queries are safe and idempotent. That is, they do not have side-effects, and (weaker and implied by safe) the result of doing them
+        muultiple times is the same as doing them once. In that sense, they are similar to a GET, but done via POST.
+
+        The 'query' argument is a Python dictionary that was created from a json string in the request. The format of the JSON will
+        depend on the database back-end.
+        
+        The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
+          200 - OK                => headers is a list of headers to return to the client. If no content_type header is given, it will be set to 
+                                     'application/ld+json'
+                                     body may be an empty list or a dictionary that contains the json representaton of the query result
+          401 - Unauthorized      => The values of headers and body are ignored
+          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
+          others                  => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error
+        """ 
         if self.user is None:
             return 401, None, None
         else:
@@ -141,30 +155,35 @@ class Domain_Logic(object):
             return status, [], result
 
     def execute_action(self, body):
-        # user is the URL that identifies the user
-        # body is a Python dictionary that was created from a json string in the request. The format of the JSON will depend on the action
-        # The return value is a triple of (status, headers, body). The values of headers and body depends on the status
-        # 200 - OK                => headers is a list of headers to return to the client. If no content_type header is given, it will be set to 
-        #                            'application/ld+json'
-        #                            body may be an empty list or a dictionary that contains the json representaton of the query result
-        # 401 - Unauthorized      => The values of headers and body are ignored
-        # 400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
-        # others                  => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
+        """
+        This method is called when a POST is made that means 'execute action'.
+
+        The 'body' argument is a Python dictionary that was created from a json string in the request. The format of the JSON will
+        depend on the action.
+        
+        The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
+          200 - OK                => headers is a list of headers to return to the client. If no content_type header is given, it will be set to 
+                                     'application/ld+json'
+                                     body may be an empty list or a dictionary that contains the json representaton of the query result
+          401 - Unauthorized      => The values of headers and body are ignored
+          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
+          others                  => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
+        """
         if self.user is None:
             return 401, None, None
         else:
             return 400, [], 'unknown action'
 
     def permissions(self, document):
-        owner = document.getValue(CE+'owner')
+        owner = document.get_value(CE+'owner')
         if self.user == str(owner):
             return AC_ALL # owner can do everything
         else:
-            resource_group = document.getValue(AC+'resource-group')                        
+            resource_group = document.get_value(AC+'resource-group')                        
             if resource_group:
                 permissions_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-permissions') + ('?%s&%s' % (urllib.quote(str(resource_group)), urllib.quote(self.user)))
                 r = utils.intra_system_get(permissions_url)
@@ -181,18 +200,21 @@ class Domain_Logic(object):
             return []
         
     def get_document(self):
-        # user is the URL that identifies the user
-        # The return value is a triple of (status, headers, body). The values of headers and body depends on the status
-        # 200 - OK                => headers is a list of headers to return to the client. If no content_type header is given, it will be set to 
-        #                            'application/ld+json'
-        #                            body is a dictionary that contains the json (or ld+json) representaton of the resource
-        # 401 - Unauthorized      => The values of headers and body are ignored
-        # 400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
-        # others                  => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
+        """
+        GET the document associated with 'self'.
+        
+        The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
+          200 - OK                => headers is a list of headers to return to the client. If no content_type header is given, it will be set to 
+                                     'application/ld+json'
+                                     body is a dictionary that contains the json (or ld+json) representaton of the resource
+          401 - Unauthorized      => The values of headers and body are ignored
+          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
+          others                  => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error
+        """ 
         if not CHECK_ACCESS_RIGHTS and self.user is None:
             return 401, None, None
         else:
@@ -212,8 +234,10 @@ class Domain_Logic(object):
             return status, [], document
 
     def get_collection(self):
-        # This method returns a storage collection as a Basic Profile Container.
-        # TODO: Need to support paging for large collections
+        """
+        This method returns a storage collection as a Basic Profile Container.
+        TODO: Need to support paging for large collections
+        """
         if self.user is None:
             return 401, [], []
         else:
@@ -245,16 +269,19 @@ class Domain_Logic(object):
         return status, [], document
                 
     def delete_document(self):
-        # user is the URL that identifies the user
-        # The return value is a triple of (status, headers, body). The values of headers and body depends on the status
-        # 204 - No content        => Successful delete. Headers is an optional list of headers to return to the client. 
-        # 401 - Unauthorized      => The values of headers and body are ignored
-        # 400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
-        # others                  => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
+        """
+        DELETE the document associated with 'self'.
+        
+        The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
+          204 - No content        => Successful delete. Headers is an optional list of headers to return to the client. 
+          401 - Unauthorized      => The values of headers and body are ignored
+          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
+          others                  => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error
+        """ 
         if self.user is None:
             return 401, [], []
         else:
@@ -283,18 +310,23 @@ class Domain_Logic(object):
             return 204, [], []    
     
     def patch_document(self, request_body):
-        # user is the URL that identifies the user
-        # request_body is a Python dictionary that was created from a json string in the request. The format of the JSON will depend on the database back-end
-        # The return value is a triple of (status, headers, body). The values of headers and body depends on the status
-        # 200 - OK                => Successful patch. Headers is an optional list of headers to return to the client. 
-        #                            body is a dictionary that may contain the ld+json representaton of the patched resource
-        # 401 - Unauthorized      => The values of headers and body are ignored
-        # 400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
-        # others                  => headers may be an empty list or may optionally include headers to return to the client
-        #                            body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
-        #                            The second element of the pair should start with a number, a space, and an optional string explaining the error 
+        """
+        PATCH the contents of document associated with 'self'.
+        
+        The 'request_body' argument is a Python dictionary that was created from a json string in the request. The format of the JSON will
+        depend on the database back-end.
+        
+        The return value is a triple of (status, headers, body). The values of headers and body depends on the status:
+          200 - OK                => Successful patch. Headers is an optional list of headers to return to the client. 
+                                     body is a dictionary that may contain the ld+json representaton of the patched resource
+          401 - Unauthorized      => The values of headers and body are ignored
+          400 - Bad Request       => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error 
+          others                  => headers may be an empty list or may optionally include headers to return to the client
+                                     body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
+                                     The second element of the pair should start with a number, a space, and an optional string explaining the error
+        """ 
         if self.user is None:
             return 401, [], []
         else:
@@ -341,10 +373,10 @@ class Domain_Logic(object):
                     self.complete_result_document(rdf_json.RDF_JSON_Document(container.data, subject))
         
     def add_bpc_member_properties(self, container, query=None):
-        ldp_resource = container.getValue(LDP+'membershipResource')
-        ldp_hasMember = container.getValue(LDP+'hasMemberRelation')
-        ldp_isMemberOf = container.getValue(LDP+'isMemberOfRelation')
-        ldp_containerSortPredicate = container.getValue(CE+'containerSortPredicates')
+        ldp_resource = container.get_value(LDP+'membershipResource')
+        ldp_hasMember = container.get_value(LDP+'hasMemberRelation')
+        ldp_isMemberOf = container.get_value(LDP+'isMemberOfRelation')
+        ldp_containerSortPredicate = container.get_value(CE+'containerSortPredicates')
         if not ldp_resource:
             raise ValueError('must provide a membership resource')
         elif ldp_hasMember:
@@ -399,10 +431,10 @@ class Domain_Logic(object):
         request_url = self.request_url()
         if document.graph_url != request_url: #usually a bad thing, unless it's an owned container that was being asked for
             owned_container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id, self.extra_path_segments)
-            if owned_container_url in document.data and URI(LDP+'DirectContainer') in document.getValues(RDF+'type', [], owned_container_url):
+            if owned_container_url in document.data and URI(LDP+'DirectContainer') in document.get_values(RDF+'type', owned_container_url):
                 document.graph_url = owned_container_url
                 return self.complete_container(document)
-        if URI(LDP+'DirectContainer') in document.getValues(RDF+'type'):
+        if URI(LDP+'DirectContainer') in document.get_values(RDF+'type'):
             status, document = self.complete_container(document)
         else:
             status = 200
@@ -412,9 +444,9 @@ class Domain_Logic(object):
             return status, document
                     
     def complete_document_for_container_insertion(self, document, container):
-        ldp_resource = container.getValue(LDP+'membershipResource')
-        ldp_hasMember = container.getValue(LDP+'hasMemberRelation')
-        ldp_isMemberOf = container.getValue(LDP+'isMemberOfRelation')
+        ldp_resource = container.get_value(LDP+'membershipResource')
+        ldp_hasMember = container.get_value(LDP+'hasMemberRelation')
+        ldp_isMemberOf = container.get_value(LDP+'isMemberOfRelation')
         if not ldp_resource:
             raise ValueError('must provide container resource: %s' % container)
         elif ldp_hasMember:
@@ -429,11 +461,11 @@ class Domain_Logic(object):
             raise ValueError('must provide a membership predicate')
 
     def complete_document_for_storage_insertion(self, document):
-        document.setValue(CE+'owner', URI(self.user))
-        if document.getValue(AC+'resource-group') is None:
+        document.set_value(CE+'owner', URI(self.user))
+        if document.get_value(AC+'resource-group') is None:
             default_resource_group = self.default_resource_group()
             if default_resource_group:
-                document.setValue(AC+'resource-group', default_resource_group)
+                document.set_value(AC+'resource-group', default_resource_group)
 
     def preprocess_properties_for_storage_insertion(self, rdf_json):
         pass
@@ -504,8 +536,8 @@ class Domain_Logic(object):
         document.add_triples(document_url, container_predicate, URI(document_url + '/' + container_path_segment))
         if self.request_url().startswith(document_url) and self.extra_path_segments != None and len(self.extra_path_segments) == 1 and self.extra_path_segments[0] == container_path_segment: 
             # client doesn't really want the document, just its owned container
-            container_resouce_group = document.getValue(AC+'resource-group')
-            container_owner = document.getValue(CE+'owner')
+            container_resouce_group = document.get_value(AC+'resource-group')
+            container_owner = document.get_value(CE+'owner')
             container_graph_url = document_url + '/' + container_path_segment
             self.add_container(document, container_graph_url, document_url, membership_predicate, member_is_object, container_resouce_group, container_owner)  
 
@@ -522,7 +554,7 @@ class Domain_Logic(object):
         document.set_value(property_predicate, URI(url))
 
     def create_all_versions_container(self, document):
-        history = document.getValues(HISTORY)
+        history = document.get_values(HISTORY)
         status, query_result = operation_primitives.get_prior_versions(self.user, self.request_hostname, self.namespace, history)
         if status == 200:
             request_url = self.request_url() # the url of the allVersions collection
@@ -538,7 +570,7 @@ class Domain_Logic(object):
             for version in query_result:
                 result_document.add_triples(version.graph_url, CE+'versionOf', URI(document.graph_url))
                 result_document.add_triples(version.graph_url, CE+'graph', [{'type': 'graph', 'value': version}])
-                document_url = version.getValue(CE+'versionOf')
+                document_url = version.get_value(CE+'versionOf')
                 del version[version.graph_url]
                 version.default_subject_url = document_url
             return 200, result_document
