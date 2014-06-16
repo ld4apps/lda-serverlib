@@ -24,9 +24,9 @@ def storage_relative_url(tenant, relative_url):
 def fix_up_url_for_storage(url, public_hostname, path_url):
     public_http_prefix = 'http://%s'%public_hostname
     public_https_prefix = 'https://%s'%public_hostname
-    if url.startswith(public_http_prefix):
+    if url.startswith(public_http_prefix) and len(url) > len(public_http_prefix) and url[len(public_http_prefix)] == '/':
         return storage_relative_url(None, url[len(public_http_prefix):]) #make it storage-relative
-    elif url.startswith(public_https_prefix):
+    elif url.startswith(public_https_prefix) and len(url) > len(public_https_prefix) and url[len(public_https_prefix)] == '/':
         return storage_relative_url(None, url[len(public_https_prefix):]) #make it storage-relative
     elif url.startswith('_:'): # you might expect that '_' would be parsed as a scheme  by urlparse, but it isn't
         return url
