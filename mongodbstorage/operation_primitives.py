@@ -292,23 +292,21 @@ def patch_document(user, document, public_hostname, tenant, namespace, document_
 def make_objectid():
     global next_id
     global lineage
-    inc_lock.acquire()
-    if not lineage:
-        lineage = str(get_lineage())
-    rslt = next_id
-    next_id += 1
-    inc_lock.release()
+    with inc_lock:
+        if not lineage:
+            lineage = str(get_lineage())
+        rslt = next_id
+        next_id += 1
     return '.'.join((lineage, str(rslt)))
     
 def make_historyid():
     global next_history_id
     global history_lineage
-    inc_lock.acquire()
-    if not history_lineage:
-        history_lineage = str(get_lineage())
-    rslt = next_history_id
-    next_history_id += 1
-    inc_lock.release()
+    with inc_lock:
+        if not history_lineage:
+            history_lineage = str(get_lineage())
+        rslt = next_history_id
+        next_history_id += 1
     return '.'.join((history_lineage, str(rslt)))
     
 def get_query_result(cursor, public_hostname):
