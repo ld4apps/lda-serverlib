@@ -41,7 +41,7 @@ class Domain_Logic(object):
             
     def recurse(self, function, namespace=None, document_id=None, extra_path_segments=None, query_string=None):
         """
-        Perform an operation with the same host-name, tenant and name-space, but new document_id, extra_segements and query_string.
+        Perform an operation with the same host-name and tenant, but new document_id, extra_segements and query_string.
         
         One implementation option would be to make a new instance of Domain_Logic and give it a new environ dict copy.
         This implementation is slightly cheaper/messier.
@@ -444,7 +444,7 @@ class Domain_Logic(object):
         self.add_container(document, container_url, membership_resource, membership_predicate, member_is_object, None, None)
         return document 
         
-    def container_from_membership_resource_in_query_string(self, container_url, membership_predicate, member_is_object):
+    def container_from_membership_resource_in_query_string(self, container_url, membership_predicate, member_is_object=False):
         if self.query_string.endswith('?non-member-properties'):
             qs = self.query_string[:-22]
         else:
