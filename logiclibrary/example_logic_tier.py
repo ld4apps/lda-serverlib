@@ -589,6 +589,15 @@ class Domain_Logic(object):
         delete_url = utils.set_resource_host_header(str(request_url), headers)
         return requests.delete(delete_url, headers=headers, verify=False)
         
+    def intra_system_put(self, request_url, data, headers={}):
+        if not 'SSSESSIONID' in headers:
+            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
+        if not 'Content-Type' in headers:
+            headers['Content-Type'] = 'application/rdf+json+ce'
+        put_url = utils.set_resource_host_header(str(request_url), headers)
+        print put_url
+        return requests.put(put_url, headers=headers,  data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
+
 def get_header(header, headers, default=None):
     headerl = header.lower()
     for item in headers:
