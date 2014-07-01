@@ -100,8 +100,12 @@ class Domain_Logic(object):
         
     def insert_document(self, container, document, document_id=None):
         if CHECK_ACCESS_RIGHTS:
-            if not self.permissions(container) & AC_C:
-                return 403, [], [('', 'not authorized')]
+            status, permissions = self.permissions(container)
+            if status == 200:
+                if not permissions & AC_C:
+                    return 403, [], [('', 'not authorized')]
+            else:
+                return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
         document = rdf_json.RDF_JSON_Document(document, '')
         self.complete_document_for_container_insertion(document, container)
         self.complete_document_for_storage_insertion(document)
@@ -162,15 +166,17 @@ class Domain_Logic(object):
     def permissions(self, document):
         owner = document.get_value(CE+'owner')
         if self.user == str(owner):
-            return AC_ALL # owner can do everything
+            return 200, AC_ALL # owner can do everything
         else:
             resource_group = document.get_value(AC+'resource-group')                        
             if resource_group:
                 permissions_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-permissions') + ('?%s&%s' % (urllib.quote(str(resource_group)), urllib.quote(self.user)))
                 r = utils.intra_system_get(permissions_url)
                 if r.status_code == 200:
-                    return int(r.text)
-        return 0
+                    return 200, int(r.text)
+                else:
+                    return r.status_code, 'url: %s text: %s' % (permissions_url, r.text)
+        return 200, 0
 
     def resource_groups(self):
         resource_group_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-resource-groups') + ('?%s' % urllib.quote(self.user))
@@ -200,8 +206,12 @@ class Domain_Logic(object):
         if status == 200:
             # we found the document, but is the user entitled to see it?
             if CHECK_ACCESS_RIGHTS:
-                if not self.permissions(document) & AC_R:
-                    return 403, [], [('', 'not authorized')]
+                status, permissions = self.permissions(document)
+                if status == 200:
+                    if not permissions & AC_R:
+                        return 403, [], [('', 'not authorized')]
+                else:
+                    return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
             status, document = self.complete_result_document(document)
             return status, [], document
         else:
