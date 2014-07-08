@@ -35,3 +35,7 @@ class Domain_Logic(object):
     def convert_rdf_json_to_compact_json(self, document):
         # second call - logic_tier already set up
         return self.logic_tier.convert_rdf_json_to_compact_json(document)    
+
+    def convert_rdf_json_to_html(self, document):
+        # second call - logic_tier already set up
+        return self.logic_tier.convert_rdf_json_to_html(document)  

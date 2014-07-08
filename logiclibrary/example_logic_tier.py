@@ -561,6 +561,10 @@ class Domain_Logic(object):
             compact_json['ldp_contains'] = members
         return compact_json
 
+    def convert_rdf_json_to_html(self, document):
+        from Example_rdf_json_to_html_converter import Example_rdf_json_to_html_converter
+        return Example_rdf_json_to_html_converter().convert_rdf_json_to_html(document)
+    
     def bad_path(self):
         return 400, [], [('', '4001 - bad path: %s (trailing / or path too short or other problem)' % self.path)]
         
