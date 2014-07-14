@@ -19,7 +19,7 @@ class Example_rdf_json_to_html_converter(object):
         if DEBUG_HTML:
             result += g_subject_indent + '<h1>Graph: <a href="%s">%s</a></h1>\n' % (document.graph_url,document.graph_url)
         graph_count = 0
-        def html_element(self, predicate, python_value, indent):
+        def html_element(predicate, python_value, indent):
             property_string = 'property="%s" ' % predicate if predicate else ''
             class_string = 'class="rdfa-triple" ' if DEBUG_HTML else ''
             subject_indent = indent + '    '
@@ -34,7 +34,7 @@ class Example_rdf_json_to_html_converter(object):
                         rslt += '    ,'
                     else:
                         subsequent = True
-                    rslt += self.html_element(None, a_value, indent + '    ')
+                    rslt += html_element(None, a_value, indent + '    ')
                 rslt += predicate_indent + '</span><br>\n'
             elif isinstance(python_value, URI) or isinstance(python_value, BNode):
                 anchor_text = str(python_value) if DEBUG_HTML else ''
@@ -79,7 +79,7 @@ class Example_rdf_json_to_html_converter(object):
             for predicate, value_array in rdf_json_subject_node.iteritems():
                 if DEBUG_HTML:
                     result += g_predicate_header_indent + '<span class="rdfa-predicate"><b>%s:&nbsp;&nbsp;</b></span>\n' % predicate
-                result += self.html_element(predicate, value_array, g_indent)
+                result += html_element(predicate, value_array, g_indent)
             result += g_indent + '    </div>\n'
         result += g_indent + '</div>'
         return result
@@ -106,7 +106,7 @@ class Example_rdf_json_to_html_converter(object):
             .rdfa-subject:before { content: counter(listing) ". "; color: gray; }
             .rdfa-predicate:before { content: counter(listing) ". "; color: gray; }
         </style>
-            body = 
+            body =
 ''' if DEBUG_HTML else ''
             result = '''
     <!DOCTYPE html>
