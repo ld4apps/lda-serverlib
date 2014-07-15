@@ -5,7 +5,7 @@ from base_constants import XSD, RDF
 
 DEBUG_HTML = 'DEBUG_HTML' in os.environ and os.environ['DEBUG_HTML'] != 'False'
 
-class Example_rdf_json_to_html_converter(object):
+class Rdf_json_to_html_converter(object):
 
     def convert_graph_to_html(self, document, graph_id = None, g_indent=None):
         if g_indent is None:
