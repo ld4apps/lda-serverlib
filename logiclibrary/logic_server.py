@@ -35,7 +35,10 @@ def post_document(environ, start_response):
         else:
             request_body_size = int(environ.get('CONTENT_LENGTH', 0))
             request_body = environ['wsgi.input'].read(request_body_size)
-            document = json.loads(request_body, object_hook = rdf_json.rdf_json_decoder)
+            try:
+                document = json.loads(request_body, object_hook = rdf_json.rdf_json_decoder)
+            except:
+                return make_json_response(400, [], [('', "No JSON object could be decoded from: '%s'" % request_body)], 'application/json', start_response)
         method = 'create_document' if post_reason == 'ce-create' else 'execute_query' if post_reason == 'ce-transform' else 'execute_action'
         status, headers, body = getattr(domain_logic, method)(document)
         add_standard_headers(environ, headers)
