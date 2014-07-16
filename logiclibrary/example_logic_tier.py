@@ -245,6 +245,7 @@ class Domain_Logic(object):
                     member_values.append(URI(result.graph_url))
                 if len(member_values) != 0:
                     container_properties[LDP+'member'] = member_values
+                    container_properties[LDP+'contains'] = member_values
             else:
                 return status, [], [('', results)]
         return status, [], document
@@ -382,7 +383,12 @@ class Domain_Logic(object):
             document.graph_url = document.graph_url + '?non-member-properties'
             return 200, document
         else:
-            return self.add_bpc_member_properties(document)
+            status, document = self.add_bpc_member_properties(document)
+            if status == 200:
+                members = document.get_container_members()
+                if len(members) > 0:
+                    document.set_value(LDP+'contains', members)
+            return status, document
 
     def complete_result_document(self, document):
         document_url = document.graph_url #self.document_url()
@@ -554,11 +560,6 @@ class Domain_Logic(object):
         converter = rdf_json.RDF_json_to_compact_json_converter(self.namespace_mappings())
         compact_json = converter.convert_to_compact_json(document)
         rdftype = compact_json['rdf_type']
-        if rdftype == LDP+'DirectContainer':
-            members = []
-            for member in document.get_container_members():
-                members.append(converter.compact_json_object(str(member), document, []))
-            compact_json['ldp_contains'] = members
         return compact_json
 
     def convert_rdf_json_to_html(self, document):
