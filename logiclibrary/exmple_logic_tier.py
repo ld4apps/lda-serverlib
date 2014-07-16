@@ -562,7 +562,7 @@ class Domain_Logic(object):
         return compact_json
 
     def convert_rdf_json_to_html(self, document):
-        from exmple_rdf_json_to_html_converter import Rdf_json_to_html_converter
+        from example_rdf_json_to_html_converter import Rdf_json_to_html_converter
         return Rdf_json_to_html_converter().convert_rdf_json_to_html(document)
     
     def bad_path(self):
