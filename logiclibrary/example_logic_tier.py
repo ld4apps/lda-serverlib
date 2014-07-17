@@ -470,11 +470,11 @@ class Domain_Logic(object):
         status, document = self.complete_result_document(document)
         return status, [], document 
 
-    def query_resource_document(self, membership_resource, membership_predicate, member_is_object, make_result):
+    def query_resource_document(self, membership_resource, membership_predicate, make_result, member_is_object=False):
         if member_is_object:
-            query = {membership_resource : {membership_predicate : '_any'}}
+            query = {str(membership_resource) : {str(membership_predicate) : '_any'}}
         else: 
-            query = {'_any': {membership_predicate : URI(membership_resource)}}
+            query = {'_any': {str(membership_predicate) : URI(membership_resource)}}
         status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
         if status == 200:
             if len(result) == 0:
@@ -486,20 +486,27 @@ class Domain_Logic(object):
         else:
             return status, [], [('', result)]
 
-    def resource_from_object_in_query_string(self, membership_predicate, member_is_object=False):
-        membership_resource = self.absolute_url(urllib.unquote(self.query_string))
+    def resource_from_membership_info(self, membership_resource, membership_predicate, member_is_object=False):
         def make_result(result):
             document = result[0]
             document.add_triples(self.request_url(), OWL+'sameAs', document.graph_url)
             self.complete_result_document(document)
             return 200, [('Content-Location', str(document.graph_url))], document                
-        return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
+        return self.query_resource_document(membership_resource, membership_predicate, make_result, member_is_object)
       
+    def resource_from_membershipResource_in_query_string(self, membership_predicate, member_is_object=False):
+        membership_resource = self.absolute_url(urllib.unquote(self.query_string))             
+        return self.resource_from_membership_info(membership_resource, membership_predicate, member_is_object)
+
+    def resource_from_object_in_query_string(self, membership_predicate, member_is_object=False):
+        print 'resource_from_object_in_query_string is deprecated - use resource_from_membershipResource_in_query_string'
+        return self.resource_from_membershipResource_in_query_string(membership_predicate, member_is_object)
+
     def add_resource_triples(self, document, membership_resource, membership_predicate, member_is_object=False):
         def make_result(result):
             self.add_member_detail(document, result)
             return 200, [], document             
-        return self.query_resource_document(membership_resource, membership_predicate, member_is_object, make_result)
+        return self.query_resource_document(membership_resource, membership_predicate, make_result, member_is_object)
 
     def add_owned_container(self, document, container_predicate, container_path_segment, membership_predicate, member_is_object=False):
         document_url = document.graph_url    
