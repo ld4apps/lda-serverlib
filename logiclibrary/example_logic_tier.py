@@ -7,24 +7,13 @@ from trsbuilder import TrackedResourceSetBuilder
 import utils
 import os
 import requests
-from base_constants import RDFS, RDF, LDP, XSD, DC, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER
+from base_constants import RDFS, RDF, LDP, XSD, DC, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
 from base_constants import URL_POLICY as url_policy
 
 HISTORY = CE+'history'
 CREATION_EVENT = TRS+'Creation'
 MODIFICATION_EVENT = TRS+'Modification'
 DELETION_EVENT = TRS+'Deletion'
-
-NAMESPACE_MAPPINGS = {
-    RDFS : 'rdfs',
-    RDF  : 'rdf', 
-    LDP :  'ldp',
-    XSD :  'xsd',
-    DC :   'dc',
-    CE :   'ce',
-    OWL :  'owl',
-    AC :   'ac' # TODO: consider changing ac:resource-group to ce:resource-group, and then remove this line
-    }
 
 CHECK_ACCESS_RIGHTS = os.environ.get('CHECK_ACCESS_RIGHTS') != 'False'
 
@@ -566,7 +555,6 @@ class Domain_Logic(object):
     def convert_rdf_json_to_compact_json(self, document):
         converter = rdf_json.RDF_json_to_compact_json_converter(self.namespace_mappings())
         compact_json = converter.convert_to_compact_json(document)
-        rdftype = compact_json['rdf_type']
         return compact_json
 
     def convert_rdf_json_to_html(self, document):
