@@ -274,7 +274,11 @@ def header_set(header, headers):
     return False
 
 def make_json_response(status, headers, body, content_type, start_response):
-    response_str = json.dumps(body, cls=rdf_json.RDF_JSON_Encoder)
+    try:
+        response_str = json.dumps(body, cls=rdf_json.RDF_JSON_Encoder)
+    except TypeError as e:
+        print body.data
+        raise e
     return make_text_response(status, headers, response_str, content_type, start_response)
 
 def make_text_response(status, headers, body, content_type, start_response):
