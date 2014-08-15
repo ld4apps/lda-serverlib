@@ -25,7 +25,7 @@ class Rdf_json_to_html_converter(object):
             subject_indent = indent + '    '
             predicate_header_indent = subject_indent + '    '
             predicate_indent = (predicate_header_indent if DEBUG_HTML else subject_indent) + '    '
-            if isinstance(python_value, (list, tuple)):
+            if isinstance(python_value, (list, tuple, set)):
                 rslt = predicate_indent + \
                     '<span %s%sdatatype="%s"><br>\n' % (class_string, property_string, RDF+'List')
                 subsequent = False

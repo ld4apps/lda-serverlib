@@ -231,7 +231,7 @@ def patch_document(user, document, public_hostname, tenant, namespace, document_
             mod_count_criteria = True
         new_values = document[1]
         document_url = url_policy.construct_url(public_hostname, tenant, namespace, document_id)
-        delete_subject_urls = [ fix_up_url_for_storage(x, public_hostname, document_url) for x in new_values if new_values[x] is None]
+        delete_subject_urls = [ fix_up_url_for_storage(x, public_hostname, document_url) for x in new_values.iterkeys() if new_values[x] is None]
         collection_name = make_collection_name(tenant, namespace)
         if len(delete_subject_urls) != 0:
             criteria = {'_id' : document_id}
