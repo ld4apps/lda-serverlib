@@ -186,6 +186,9 @@ def query_predicate_to_storage(predicate, value_array, public_hostname, path_url
             if len(value_array) == 1 and '$in' in value_array:
                 values = value_array['$in']
                 return {'$in' : [query_value_to_storage(value, public_hostname, path_url) for value in values]}
+            elif len(value_array) == 1 and '$exists' in value_array:
+                value = value_array['$exists']
+                return {'$exists' : value}
             else:
                 raise ValueError('unhandled clause %s' % value_array)
         else:
