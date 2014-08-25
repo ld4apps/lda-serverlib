@@ -87,6 +87,9 @@ class Rdf_json_to_html_converter(object):
     def convert_rdf_json_to_html(self, document):
         if not hasattr(document, 'graph_url'): # not an rdf_json document - probably an error condition
             return json.dumps(document, cls=RDF_JSON_Encoder)
+        
+        if 'APP_JS_NAME' in os.environ:
+            application_url = os.environ['APP_JS_NAME']
         else:
             config_file_name = '/etc/ce/conf.d/%s.conf' % os.environ['APP_NAME']
             try:
@@ -98,25 +101,26 @@ class Rdf_json_to_html_converter(object):
             else:
                 config_file.close()
 
-            style = '''
-        <style>
-            .rdfa-graph { counter-reset: listing; }
-            .rdfa-subject { counter-increment: listing; }
-            .rdfa-predicate { counter-increment: listing; }
-            .rdfa-subject:before { content: counter(listing) ". "; color: gray; }
-            .rdfa-predicate:before { content: counter(listing) ". "; color: gray; }
-        </style>
-            body =
+        style = '''
+<style>
+    .rdfa-graph { counter-reset: listing; }
+    .rdfa-subject { counter-increment: listing; }
+    .rdfa-predicate { counter-increment: listing; }
+    .rdfa-subject:before { content: counter(listing) ". "; color: gray; }
+    .rdfa-predicate:before { content: counter(listing) ". "; color: gray; }
+</style>
 ''' if DEBUG_HTML else ''
-            result = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <script src="%s" type="text/javascript"></script>%s
-    </head>
-    <body>
-%s
-    </body>
-    </html>''' % (application_url, style, self.convert_graph_to_html(document))
 
-            return str(result)
+        result = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="%s" type="text/javascript"></script>%s
+</head>
+<body>
+%s
+</body>
+</html>
+''' % (application_url, style, self.convert_graph_to_html(document))
+
+        return str(result)
