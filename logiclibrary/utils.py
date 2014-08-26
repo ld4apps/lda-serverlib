@@ -63,7 +63,7 @@ def set_resource_host_header(request_url, headers):
         return request_url
 
 def intra_system_get(request_url, headers={}):
-    get_url = set_resource_host_header(request_url, headers)
+    get_url = set_resource_host_header(str(request_url), headers)
     return requests.get(get_url, headers=headers)
 
 CONTENT_RDF_JSON_HEADER = {
