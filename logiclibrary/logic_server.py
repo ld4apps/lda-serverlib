@@ -123,6 +123,13 @@ def patch_document(environ, start_response):
         status, headers, body = domain_logic.patch_document(document)
         add_standard_headers(environ, headers)
         if status == 200:
+            if not header_set('Content-Location', headers):
+                host = utils.get_request_host(environ)
+                if environ['QUERY_STRING']:
+                    content_location = 'http://%s%s?%s' %(host, environ['PATH_INFO'], environ['QUERY_STRING'])
+                else:
+                    content_location = 'http://%s%s' %(host, environ['PATH_INFO'])
+                headers.append(('Content-Location', content_location))
             return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
         elif status == 403:
             return send_auth_challenge(environ, start_response)
