@@ -7,7 +7,7 @@ from trsbuilder import TrackedResourceSetBuilder
 import utils
 import os
 import requests
-from base_constants import RDFS, RDF, LDP, XSD, DC, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
+from base_constants import RDF, LDP, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
 from base_constants import URL_POLICY as url_policy
 
 HISTORY = CE+'history'
@@ -301,7 +301,7 @@ class Domain_Logic(object):
             if(get_status == 200):
                 return 200, headers, new_document
             else:
-                return 200, [], [('', 'Patch was successful but getting the document after returned %s' % get_status)]              
+                return 404, [], [('', 'Patch was successful but getting the document after returned %s' % get_status)]              
         else:
             return status, [], [('', result)]
 
