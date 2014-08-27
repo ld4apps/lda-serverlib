@@ -16,7 +16,8 @@ MODIFICATION_EVENT = TRS+'Modification'
 DELETION_EVENT = TRS+'Deletion'
 
 CHECK_ACCESS_RIGHTS = os.environ.get('CHECK_ACCESS_RIGHTS') != 'False'
-
+UNCHANGED=object() # special value for recurse() args
+    
 class Domain_Logic(object):
     def __init__(self, environ, change_tracking=False):
         self.environ = environ
@@ -28,13 +29,18 @@ class Domain_Logic(object):
         if change_tracking:
             self.trs_builders = {}
             
-    def recurse(self, function, namespace=None, document_id=None, extra_path_segments=None, query_string=None):
+    def recurse(self, function, namespace=UNCHANGED, document_id=UNCHANGED, extra_path_segments=UNCHANGED, query_string=UNCHANGED, url=None):
         """
         Perform an operation with the same host-name and tenant, but new document_id, extra_segements and query_string.
-        
+
         One implementation option would be to make a new instance of Domain_Logic and give it a new environ dict copy.
         This implementation is slightly cheaper/messier.
         """
+        if url != None:
+            if namespace != UNCHANGED or document_id != UNCHANGED or extra_path_segments != UNCHANGED or query_string != UNCHANGED:
+                raise ValueError('may nor set URL and also set namespace, document_id, extra_path_segments or query_string')
+            namespace, document_id, extra_path_segments, parse_result = url_policy.parse(url) 
+            query_string = parse_result.query
         original_namespace = self.namespace
         original_document_id = self.document_id
         original_path = self.path
@@ -42,17 +48,17 @@ class Domain_Logic(object):
         original_query_string = self.query_string
         original_path_parts = self.path_parts
         try:
-            if namespace is not None:
+            if namespace != UNCHANGED:
                 self.namespace = namespace
-            if document_id is not None:
+            if document_id != UNCHANGED:
                 self.document_id = document_id
-            if extra_path_segments is not None:
+            if extra_path_segments != UNCHANGED:
                 self.extra_path_segments = extra_path_segments
             self.path_parts = ['', self.namespace, self.document_id] if self.namespace and self.document_id else ['', self.namespace] if self.namespace else ['']
             if self.extra_path_segments:
                 self.path_parts = self.path_parts + self.extra_path_segments
             self.path = '/'.join(self.path_parts)
-            if query_string is not None:
+            if query_string != UNCHANGED:
                 self.query_string = query_string    
             status, headers, document = function()
         finally: 
@@ -64,9 +70,9 @@ class Domain_Logic(object):
             self.path_parts = original_path_parts
         return status, headers, document
 
-    def recursive_get_document(self, namespace=None, document_id=None, extra_path_segments=None, query_string=None):
-        return self.recurse(self.get_document, namespace, document_id, extra_path_segments, query_string)
-        
+    def recursive_get_document(self, namespace=UNCHANGED, document_id=UNCHANGED, extra_path_segments=UNCHANGED, query_string=UNCHANGED, url=None):
+        return self.recurse(self.get_document, namespace, document_id, extra_path_segments, query_string, url)    
+    
     def create_document(self, document, document_id=None):
         """
         This method is called when a POST is made that means 'create'.
