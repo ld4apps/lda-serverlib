@@ -293,21 +293,22 @@ class Domain_Logic(object):
         if not self.namespace: #trailing / or other problem
             return self.bad_path()
         resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
-        if not (isinstance(request_body, list) and len(request_body) == 2 and isinstance(request_body[0], int)): 
-            return 400, [], [('', 'patch body must be array of form [modification_count, rdf/json object]')]
-        self.preprocess_properties_for_storage_insertion(rdf_json.RDF_JSON_Document(request_body[1], resource_url))
-        mod_count = request_body[0]
-        if not (isinstance(mod_count, numbers.Number) and mod_count == (mod_count | 0)):
-            return 400, [], [('', 'patch modification_count must be a number')]
-        status, result = operation_primitives.patch_document(self.user, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)   
-        if self.change_tracking and status == 200:
-            self.generate_change_event(MODIFICATION_EVENT, resource_url)
+        if not 'HTTP_CE_MODIFICATIONCOUNT' in self.environ:
+            return 400, [], [('', 'Must provide CE-ModificationCount header')]
+        try:
+            mod_count = int(self.environ['HTTP_CE_MODIFICATIONCOUNT'])
+        except ValueError:
+            return 400, [], [('', 'CE-ModificationCount header must be an integer: %s' % self.environ['HTTP_CE-MODIFICATIONCOUNT'])]
+        self.preprocess_properties_for_storage_insertion(rdf_json.RDF_JSON_Document(request_body, resource_url))
+        status, result = operation_primitives.patch_document(self.user, mod_count, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)   
         if(status == 200):
             get_status, headers, new_document = self.get_document()
             if(get_status == 200):
+                if self.change_tracking:
+                    self.generate_change_event(MODIFICATION_EVENT, resource_url)
                 return 200, headers, new_document
             else:
-                return 404, [], [('', 'Patch was successful but getting the document after returned %s' % get_status)]              
+                return get_status, [], [('', 'Patch was successful but getting the document afterwards failed')]              
         else:
             return status, [], [('', result)]
 
@@ -592,11 +593,12 @@ class Domain_Logic(object):
         post_url = utils.set_resource_host_header(str(request_url), headers)
         return requests.post(post_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
         
-    def intra_system_patch(self, request_url, data, headers={}):
+    def intra_system_patch(self, request_url, modification_count, data, headers={}):
         if not 'SSSESSIONID' in headers:
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
-            headers['Content-Type'] = 'application/json'
+            headers['Content-Type'] = 'application/rdf+json+ce'
+        headers['CE-ModificationCount'] = str(modification_count)
         patch_url = utils.set_resource_host_header(str(request_url), headers)
         return requests.patch(patch_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
 

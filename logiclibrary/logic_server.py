@@ -110,7 +110,7 @@ def delete_document(environ, start_response):
 def patch_document(environ, start_response):
     domain_logic = Domain_Logic(environ)
     content_type = environ['CONTENT_TYPE'].split(';')[0]
-    if content_type == 'application/json':
+    if content_type == 'application/rdf+json+ce':
         content_length = int(environ['CONTENT_LENGTH'])
         request_body = environ['wsgi.input'].read(content_length)
         document = json.loads(request_body, object_hook = rdf_json.rdf_json_decoder)
@@ -126,7 +126,7 @@ def patch_document(environ, start_response):
             return make_json_response(status, headers, body, 'application/json', start_response)
     else:
         start_response('400 Bad Request', [])
-        return ['content type of patch must be application/json, not %s' % content_type]
+        return ['content type of patch must be application/rdf+json+ce, not %s' % content_type]
 
 def put_document(environ, start_response):
     domain_logic = Domain_Logic(environ)
