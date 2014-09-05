@@ -70,7 +70,7 @@ def get_document(environ, start_response):
         return send_auth_challenge(environ, start_response, best_match)
     elif status == 200:
         if not header_set('Content-Location', headers):
-            headers.append(('Content-Location', str(body.graph_url)))
+            headers.append(('Content-Location', utils.get_request_url(environ)))
         if not header_set('Cache-Control', headers):
             headers.append(('Cache-Control', 'no-cache'))
         if not header_set('Vary', headers):
@@ -118,7 +118,7 @@ def patch_document(environ, start_response):
         add_standard_headers(environ, headers)
         if status == 200:
             if not header_set('Content-Location', headers):
-                headers.append(('Content-Location', str(body.graph_url)))
+                headers.append(('Content-Location', utils.get_request_url(environ)))
             return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
         elif status == 403:
             return send_auth_challenge(environ, start_response)

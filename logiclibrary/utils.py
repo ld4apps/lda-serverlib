@@ -53,6 +53,14 @@ def create_anonymous_user_claims(environ):
 def get_request_host(environ):
     return environ.get('HTTP_CE_RESOURCE_HOST') or environ['HTTP_HOST']
 
+def get_request_url(environ):
+        host = get_request_host(environ)
+        if environ['QUERY_STRING']:
+            request_url = 'http://%s%s?%s' %(host, environ['PATH_INFO'], environ['QUERY_STRING'])
+        else:
+            request_url = 'http://%s%s' %(host, environ['PATH_INFO'])
+        return request_url
+
 def set_resource_host_header(request_url, headers):
     if SYSTEM_HOST is not None:
         parts = list(urlparse.urlparse(request_url))
