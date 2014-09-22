@@ -7,6 +7,7 @@ from trsbuilder import TrackedResourceSetBuilder
 import utils
 import os
 import requests
+import cryptography
 from base_constants import RDF, LDP, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
 from base_constants import URL_POLICY as url_policy
 
@@ -166,7 +167,17 @@ class Domain_Logic(object):
             resource_group = document.get_value(AC+'resource-group')                        
             if resource_group:
                 permissions_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-permissions') + ('?%s&%s' % (urllib.quote(str(resource_group)), urllib.quote(self.user)))
-                r = utils.intra_system_get(permissions_url)
+
+                headers = {
+                    'Accept': 'application/rdf+json+ce',
+                    'Cookie': 'SSSESSIONID=%s' % cryptography.encode_jwt({'user': self.user})}
+                if not permissions_url.lower().startswith('http'):
+                    if permissions_url.startswith('/'):
+                        permissions_url = permissions_url[1:]
+                    permissions_url = url_policy.construct_url(self.request_hostname, self.tenant, permissions_url)
+                r = requests.get(permissions_url, headers=headers, verify=False)
+
+                #r = utils.intra_system_get(permissions_url)
                 if r.status_code == 200:
                     return 200, int(r.text)
                 else:
