@@ -189,6 +189,9 @@ def query_predicate_to_storage(predicate, value_array, public_hostname, path_url
             elif len(value_array) == 1 and '$exists' in value_array:
                 value = value_array['$exists']
                 return {'$exists' : value}
+            elif len(value_array) == 1 and '$regex' in value_array:
+                value = value_array['$regex']
+                return {'$regex' : value}
             else:
                 raise ValueError('unhandled clause %s' % value_array)
         else:
