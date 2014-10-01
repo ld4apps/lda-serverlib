@@ -78,6 +78,7 @@ def storage_value_from_rdf_json(rdf_json, public_hostname, path_url):
 def restore_URL_from_storage(url, public_hostname):
     if url.startswith(STORAGE_PREFIX):
         public_url_prefix = 'http://%s'%public_hostname
+        #public_url_prefix = '//%s'%public_hostname
         return public_url_prefix + url[len(STORAGE_PREFIX):]
     else: #must be absolute
         return url
