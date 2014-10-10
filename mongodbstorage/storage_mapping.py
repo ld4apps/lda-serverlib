@@ -29,6 +29,8 @@ def fix_up_url_for_storage(url, public_hostname, path_url):
         return storage_relative_url(None, url[len(public_http_prefix):]) #make it storage-relative
     elif url.startswith(public_https_prefix) and len(url) > len(public_https_prefix) and url[len(public_https_prefix)] == '/':
         return storage_relative_url(None, url[len(public_https_prefix):]) #make it storage-relative
+    elif url.startswith(public_null_prefix) and len(url) > len(public_null_prefix) and url[len(public_null_prefix)] == '/':
+        return storage_relative_url(None, url[len(public_null_prefix):]) #make it storage-relative
     elif url.startswith('_:'): # you might expect that '_' would be parsed as a scheme  by urlparse, but it isn't
         return url
     else:
@@ -173,8 +175,8 @@ def query_value_to_storage(value, public_hostname, path_url):
 
 def query_predicate_to_storage(predicate, value_array, public_hostname, path_url):
     if predicate == '$or':
-        op1 = value_array[0].popitem()
-        op2 = value_array[1].popitem()
+        op1 = value_array[0].iteritems().next()
+        op2 = value_array[1].iteritems().next()
         predicate1 = op1[0]
         value_array1 = op1[1]
         match_predicates1 = {}
@@ -206,7 +208,7 @@ def query_predicate_to_storage(predicate, value_array, public_hostname, path_url
 def query_to_storage(json_query, public_hostname, path_url):
     if '$query' in json_query:
         mongo_query_part = query_to_storage(json_query['$query'], public_hostname, path_url)
-        predicate, ascending = json_query['$orderby'].popitem()
+        predicate, ascending = json_query['$orderby'].iteritems().next()
         predicate = predicate_to_mongo(predicate)
         return {'$query': mongo_query_part, '$orderby': {predicate: ascending}}
     match_array = []
