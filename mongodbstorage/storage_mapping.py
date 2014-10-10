@@ -24,6 +24,7 @@ def storage_relative_url(tenant, relative_url):
 def fix_up_url_for_storage(url, public_hostname, path_url):
     public_http_prefix = 'http://%s'%public_hostname
     public_https_prefix = 'https://%s'%public_hostname
+    public_null_prefix = '//%s'%public_hostname
     if url.startswith(public_http_prefix) and len(url) > len(public_http_prefix) and url[len(public_http_prefix)] == '/':
         return storage_relative_url(None, url[len(public_http_prefix):]) #make it storage-relative
     elif url.startswith(public_https_prefix) and len(url) > len(public_https_prefix) and url[len(public_https_prefix)] == '/':
@@ -38,6 +39,10 @@ def fix_up_url_for_storage(url, public_hostname, path_url):
                 return storage_relative_url(None, abs_url[len(public_http_prefix):]) #make it storage-relative
             elif abs_url.startswith(public_https_prefix):
                 return storage_relative_url(None, abs_url[len(public_https_prefix):]) #make it storage-relative
+            elif abs_url.startswith(public_null_prefix):
+                return storage_relative_url(None, abs_url[len(public_null_prefix):]) #make it storage-relative
+            else:
+                raise ValueError('unexpected URL: %s' % url)
         else: #must be an absolute http url on a different host or an url with a scheme other than http(s)
             return url
 
@@ -77,14 +82,14 @@ def storage_value_from_rdf_json(rdf_json, public_hostname, path_url):
             
 def restore_URL_from_storage(url, public_hostname):
     if url.startswith(STORAGE_PREFIX):
-        public_url_prefix = 'http://%s'%public_hostname
+        public_url_prefix = '//%s'%public_hostname
         return public_url_prefix + url[len(STORAGE_PREFIX):]
     else: #must be absolute
         return url
 
 def uri_string_from_storage(url_string, public_hostname):
     if url_string.startswith(STORAGE_PREFIX):
-        public_url_prefix = 'http://%s'%public_hostname
+        public_url_prefix = '//%s'%public_hostname
         result = URI(public_url_prefix + url_string[len(STORAGE_PREFIX):])
     else: #must be absolute
         result = URI(url_string)
