@@ -84,6 +84,8 @@ CONTENT_RDF_JSON_HEADER = {
 
 def intra_system_post(request_url, data, headers=CONTENT_RDF_JSON_HEADER):
     post_url = set_resource_host_header(request_url, headers)
-    return requests.post(post_url, headers=headers, data=json.dumps(data, cls=RDF_JSON_Encoder), verify=False)
+    if post_url.startswith('http'):
+        raise ValueError()
+    return requests.post('http:'+post_url, headers=headers, data=json.dumps(data, cls=RDF_JSON_Encoder), verify=False)
     return None
 
