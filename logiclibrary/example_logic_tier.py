@@ -207,7 +207,7 @@ class Domain_Logic(object):
                         return 403, [], [('', 'not authorized')]
                 else:
                     return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
-            status, document = self.complete_result_document(document)
+            status, document = self.complete_request_document(document)
             return status, [], document
         else:
             return status, [], [('', document)]
@@ -387,6 +387,10 @@ class Domain_Logic(object):
             return status, document
 
     def complete_result_document(self, document):
+        pass
+        
+    def complete_request_document(self, document):
+        self.complete_result_document(document) # will add any calculated properties, including owned containers.
         document_url = document.graph_url #self.document_url()
         if self.extra_path_segments == None: # a simple document URL with no extra path segments
             document.add_triples(document_url, CE+'allVersions', URI('/'.join((document_url, 'allVersions'))))
