@@ -46,8 +46,7 @@ def get_or_create_claims(environ):
     return claims
         
 def create_anonymous_user_claims(environ):
-    host = get_request_host(environ)
-    anonymous_user = 'http://%s/unknown_user/%s' % (host, uuid.uuid4())
+    anonymous_user = '/unknown_user/%s' % uuid.uuid4()
     return {'user': anonymous_user} 
 
 def get_request_host(environ):

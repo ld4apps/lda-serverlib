@@ -18,33 +18,35 @@ CREATED = DC+'created'
 #TODO: Think about whether we should use our own CE namespace (instead of DC) for CREATOR and CREATED properties, so that
 #      we don't ever interfere with (wipe out) user-defined values.
 
-def storage_relative_url(tenant, relative_url):
-    return STORAGE_PREFIX + relative_url
-
 def fix_up_url_for_storage(url, public_hostname, path_url):
     public_http_prefix = 'http://%s'%public_hostname
     public_https_prefix = 'https://%s'%public_hostname
     public_null_prefix = '//%s'%public_hostname
     if url.startswith(public_http_prefix) and len(url) > len(public_http_prefix) and url[len(public_http_prefix)] == '/':
-        return storage_relative_url(None, url[len(public_http_prefix):]) #make it storage-relative
+        print 'warning - making relative: %s' % url
+        return url[len(public_http_prefix):] #make it relative
     elif url.startswith(public_https_prefix) and len(url) > len(public_https_prefix) and url[len(public_https_prefix)] == '/':
-        return storage_relative_url(None, url[len(public_https_prefix):]) #make it storage-relative
+        print 'warning - making relative: %s' % url
+        return url[len(public_https_prefix):] #make it storage-relative
     elif url.startswith(public_null_prefix) and len(url) > len(public_null_prefix) and url[len(public_null_prefix)] == '/':
-        return storage_relative_url(None, url[len(public_null_prefix):]) #make it storage-relative
+        print 'warning - making relative: %s' % url
+        return url[len(public_null_prefix):] #make it storage-relative
     elif url.startswith('_:'): # you might expect that '_' would be parsed as a scheme  by urlparse, but it isn't
         return url
-    else:
+    else: 
         o = urlparse.urlparse(url)
         if (o.scheme == '' or o.scheme == 'http' or o.scheme == 'https') and o.netloc == '': # http(s) relative url
             abs_url = urlparse.urljoin(path_url, url) #make it absolute first
             if abs_url.startswith(public_http_prefix):
-                return storage_relative_url(None, abs_url[len(public_http_prefix):]) #make it storage-relative
+                return abs_url[len(public_http_prefix):] #make it storage-relative
             elif abs_url.startswith(public_https_prefix):
-                return storage_relative_url(None, abs_url[len(public_https_prefix):]) #make it storage-relative
+                return abs_url[len(public_https_prefix):] #make it storage-relative
             elif abs_url.startswith(public_null_prefix):
-                return storage_relative_url(None, abs_url[len(public_null_prefix):]) #make it storage-relative
+                return abs_url[len(public_null_prefix):] #make it storage-relative
+            elif abs_url.startswith('/') and not abs_url.startswith('//'):
+                return abs_url
             else:
-                raise ValueError('unexpected URL: %s' % url)
+                raise ValueError('unexpected URL: %s path_url: %s abs_url %s' % (url, path_url, abs_url))
         else: #must be an absolute http url on a different host or an url with a scheme other than http(s)
             return url
 
@@ -81,21 +83,6 @@ def storage_value_from_rdf_json(rdf_json, public_hostname, path_url):
             return {'type':'bnode','value':rdf_json.uri_string} 
         else:
             return rdf_json # hopefully it's a string, a number or a boolean, otherwise it won't work    
-            
-def restore_URL_from_storage(url, public_hostname):
-    if url.startswith(STORAGE_PREFIX):
-        public_url_prefix = '//%s'%public_hostname
-        return public_url_prefix + url[len(STORAGE_PREFIX):]
-    else: #must be absolute
-        return url
-
-def uri_string_from_storage(url_string, public_hostname):
-    if url_string.startswith(STORAGE_PREFIX):
-        public_url_prefix = '//%s'%public_hostname
-        result = URI(public_url_prefix + url_string[len(STORAGE_PREFIX):])
-    else: #must be absolute
-        result = URI(url_string)
-    return result
         
 def restore_predicate_from_storage(predicate):
     if '%2E' in predicate: #need to escape dots in predicates to keep mongodb happy
@@ -108,7 +95,7 @@ def rdf_json_value_from_storage (storage_json, public_hostname):
         rj_type = storage_json['type']
         if rj_type == 'uri':
             url_string = storage_json['value']
-            result = uri_string_from_storage(url_string, public_hostname)
+            result = URI(url_string)
         elif rj_type == 'literal':
             result = storage_json
         else:
@@ -132,15 +119,15 @@ def rdf_json_from_storage (storage_json, public_hostname):
                         rdf_subject[predicate] = [rdf_json_value_from_storage (item, public_hostname) for item in storage_value_array]
                     else:
                         rdf_subject[predicate] = rdf_json_value_from_storage (storage_value_array, public_hostname)
-            rdf_json[restore_URL_from_storage(storage_subject_node['@id'], public_hostname)] = rdf_subject
+            rdf_json[storage_subject_node['@id']] = rdf_subject
     if '_versionOf' in storage_json:
-        graph_subject_url = restore_URL_from_storage(storage_json['_versionOf'], public_hostname)
-        version_url = restore_URL_from_storage(storage_json['@id'], public_hostname)
+        graph_subject_url = storage_json['_versionOf']
+        version_url = storage_json['@id']
         rdf_json[version_url] = {CE+'versionOf': rdf_json_value_struct('uri', graph_subject_url), RDF+'type': rdf_json_value_struct('uri', CE+'Version')}
         if graph_subject_url not in rdf_json:
             rdf_json[graph_subject_url] = {}
     else:
-        graph_subject_url = restore_URL_from_storage(storage_json['@id'], public_hostname)
+        graph_subject_url = storage_json['@id']
         version_url = None
         if graph_subject_url not in rdf_json:
             rdf_json[graph_subject_url] = {}
@@ -149,11 +136,11 @@ def rdf_json_from_storage (storage_json, public_hostname):
     if '_lastModified' in storage_json:
         rdf_json[graph_subject_url][LASTMODIFIED] = storage_json['_lastModified']
     if '_lastModifiedBy' in storage_json:
-        rdf_json[graph_subject_url][LASTMODIFIEDBY] = uri_string_from_storage(storage_json['_lastModifiedBy'], public_hostname)
+        rdf_json[graph_subject_url][LASTMODIFIEDBY] = URI(storage_json['_lastModifiedBy'])
     if '_created' in storage_json:
         rdf_json[graph_subject_url][CREATED] = storage_json['_created']
     if '_createdBy' in storage_json:
-        rdf_json[graph_subject_url][CREATOR] = uri_string_from_storage(storage_json['_createdBy'], public_hostname)
+        rdf_json[graph_subject_url][CREATOR] = URI(storage_json['_createdBy'])
     if '_history' in storage_json: 
         history = storage_json['_history']
         rdf_json[graph_subject_url][CE+'history'] = [URI(version) for version in history]
