@@ -387,7 +387,7 @@ class Domain_Logic(object):
             return status, document
 
     def complete_result_document(self, document):
-        pass
+        return 200, document
         
     def complete_request_document(self, document):
         self.complete_result_document(document) # will add any calculated properties, including owned containers.
