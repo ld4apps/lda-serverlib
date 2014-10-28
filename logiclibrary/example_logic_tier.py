@@ -1,12 +1,12 @@
 import operation_primitives
 import urlparse, urllib
-import numbers
 import json, rdf_json
 from rdf_json import URI
 from trsbuilder import TrackedResourceSetBuilder
 import utils
 import os
 import requests
+from requests.exceptions import ConnectionError
 from base_constants import RDF, LDP, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
 from base_constants import URL_POLICY as url_policy
 
@@ -180,7 +180,19 @@ class Domain_Logic(object):
             return json.loads(r.text, object_hook=rdf_json.rdf_json_decoder)
         else:
             return []
-        
+
+    def get_health(self):
+        # Before claiming to be healthy, Make sure that we can do outgoing intra_system calls
+        intra_system_test_url = url_policy.construct_url(self.request_hostname, self.tenant, 'favicon.ico')
+        try:
+            r = utils.intra_system_get(intra_system_test_url)
+            if r.status_code != 200 and r.status_code != 404:
+                # Note that 404 means that we are able to reach the SYSTEM_HOST, so we're healthy, even if it doesn't implement favicon.ico
+                return r.status_code, [], [('','intra_system_get not functioning: %s' % r.text)]
+        except ConnectionError as e:
+            return 504, [], [('','intra_system_get exception: %s' % e.message)]
+        return 200, [('Content-Type', 'text/plain'), ('Content-length', '1')], ['1']
+
     def get_document(self):
         """
         GET the document associated with 'self'.
