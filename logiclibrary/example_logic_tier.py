@@ -316,7 +316,8 @@ class Domain_Logic(object):
         resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
         document = rdf_json.RDF_JSON_Document(request_body, resource_url)
         if CHECK_ACCESS_RIGHTS:
-            status, permissions = self.permissions(document)
+            prepatch_document = self.get_document()[2]
+            status, permissions = self.permissions(prepatch_document)
             if status == 200:
                 if not permissions & AC_C:
                     return 403, [], [('', 'not authorized')]
