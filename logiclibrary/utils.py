@@ -74,7 +74,8 @@ def set_resource_host_header(request_url, headers):
     else:
         return request_url
 
-def intra_system_get(request_url, headers={}):
+def intra_system_get(request_url, headers=None):
+    if not headers: headers = dict()
     get_url = set_resource_host_header(str(request_url), headers)
     return requests.get(get_url, headers=headers)
 
@@ -84,7 +85,8 @@ CONTENT_RDF_JSON_HEADER = {
     'ce-post-reason' : 'ce-create'
     }
 
-def intra_system_post(request_url, data, headers=CONTENT_RDF_JSON_HEADER):
+def intra_system_post(request_url, data, headers=None):
+    if not headers: headers = CONTENT_RDF_JSON_HEADER.copy()
     post_url = set_resource_host_header(request_url, headers)
     return requests.post(post_url, headers=headers, data=json.dumps(data, cls=RDF_JSON_Encoder), verify=False)
     return None
