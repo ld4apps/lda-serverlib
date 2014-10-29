@@ -5,6 +5,7 @@ import requests, urlparse
 import json
 from base_constants import ADMIN_USER
 from rdf_json import RDF_JSON_Encoder
+import url_policy as url_policy_module
 
 SYSTEM_HOST = os.environ.get('SYSTEM_HOST') if 'SYSTEM_HOST' in os.environ else None
 
@@ -50,8 +51,8 @@ def create_anonymous_user_claims(environ):
     anonymous_user = 'http://%s/unknown_user/%s' % (host, uuid.uuid4())
     return {'user': anonymous_user} 
 
-def get_request_host(environ):
-    return environ.get('HTTP_CE_RESOURCE_HOST') or environ['HTTP_HOST']
+def get_request_host(environ): # TODO: remove this and make callers use get_request_host function in lda-clientlib
+    return url_policy_module.get_request_host(environ)
 
 def get_request_url(environ):
         host = get_request_host(environ)
@@ -64,7 +65,10 @@ def get_request_url(environ):
 def set_resource_host_header(request_url, headers):
     if SYSTEM_HOST is not None:
         parts = list(urlparse.urlparse(request_url))
-        headers['CE-Resource-Host'] = parts[1]
+        if not parts[0]:
+            parts[0] = 'http'
+        if parts[1]:
+            headers['CE-Resource-Host'] = parts[1]
         parts[1] = SYSTEM_HOST
         return urlparse.urlunparse(tuple(parts))
     else:
