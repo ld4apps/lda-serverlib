@@ -7,6 +7,17 @@ from base_constants import ADMIN_USER
 from rdf_json import RDF_JSON_Encoder
 import url_policy as url_policy_module
 
+import logging
+logger = logging.getLogger(__name__)
+class LimitLogging():
+    def __init__(self, lvl):
+        self.level=lvl
+    def __enter__(self):
+       logging.disable(self.level)
+    def __exit__(self, a, b, c):
+       logging.disable(logging.NOTSET)
+LIMIT_LOGGING_LEVEL_INFO = LimitLogging(logging.INFO)
+
 SYSTEM_HOST = os.environ.get('SYSTEM_HOST') if 'SYSTEM_HOST' in os.environ else None
 
 def get_jwt(environ):
@@ -28,7 +39,7 @@ def get_claims(environ):
         return cryptography.decode_jwt(session_key) 
     else:
         return None       
-        
+
 def get_or_create_claims(environ):
     jwt = get_jwt(environ)
     if jwt:
@@ -45,7 +56,7 @@ def get_or_create_claims(environ):
         claims = create_anonymous_user_claims(environ)
         environ['SSSESSIONID'] = cryptography.encode_jwt(claims)
     return claims
-        
+
 def create_anonymous_user_claims(environ):
     host = get_request_host(environ)
     anonymous_user = 'http://%s/unknown_user/%s' % (host, uuid.uuid4())
@@ -76,8 +87,9 @@ def set_resource_host_header(request_url, headers):
 
 def intra_system_get(request_url, headers=None):
     if not headers: headers = dict()
-    get_url = set_resource_host_header(str(request_url), headers)
-    return requests.get(get_url, headers=headers)
+    actual_url = set_resource_host_header(str(request_url), headers)
+    logger.debug('intra_system_get request_url: %s actual_url: %s headers: %s', request_url, actual_url, headers)
+    return requests.get(actual_url, headers=headers)
 
 CONTENT_RDF_JSON_HEADER = {
     'Content-type' : 'application/rdf+json+ce',
@@ -87,7 +99,7 @@ CONTENT_RDF_JSON_HEADER = {
 
 def intra_system_post(request_url, data, headers=None):
     if not headers: headers = CONTENT_RDF_JSON_HEADER.copy()
-    post_url = set_resource_host_header(request_url, headers)
-    return requests.post(post_url, headers=headers, data=json.dumps(data, cls=RDF_JSON_Encoder), verify=False)
+    actual_url = set_resource_host_header(request_url, headers)
+    logger.debug('intra_system_post request_url: %s actual_url: %s headers: %s data: %s', request_url, actual_url, headers, data)
+    return requests.post(actual_url, headers=headers, data=json.dumps(data, cls=RDF_JSON_Encoder), verify=False)
     return None
-

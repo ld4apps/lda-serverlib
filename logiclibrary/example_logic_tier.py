@@ -9,6 +9,9 @@ import requests
 from requests.exceptions import ConnectionError
 from base_constants import RDF, LDP, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
 from base_constants import URL_POLICY as url_policy
+import logging
+
+logger=logging.getLogger(__name__)
 
 HISTORY = CE+'history'
 CREATION_EVENT = TRS+'Creation'
@@ -166,7 +169,7 @@ class Domain_Logic(object):
             resource_group = document.get_value(AC+'resource-group')                        
             if resource_group:
                 permissions_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-permissions') + ('?%s&%s' % (urllib.quote(str(resource_group)), urllib.quote(self.user)))
-                r = utils.intra_system_get(permissions_url)
+                r = self.intra_system_get(permissions_url)
                 if r.status_code == 200:
                     return 200, int(r.text)
                 else:
@@ -175,7 +178,7 @@ class Domain_Logic(object):
 
     def resource_groups(self):
         resource_group_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-resource-groups') + ('?%s' % urllib.quote(self.user))
-        r = utils.intra_system_get(resource_group_url)
+        r = self.intra_system_get(resource_group_url)
         if r.status_code == 200:
             return json.loads(r.text, object_hook=rdf_json.rdf_json_decoder)
         else:
@@ -185,7 +188,8 @@ class Domain_Logic(object):
         # Before claiming to be healthy, Make sure that we can do outgoing intra_system calls
         intra_system_test_url = url_policy.construct_url(self.request_hostname, self.tenant, 'favicon.ico')
         try:
-            r = utils.intra_system_get(intra_system_test_url)
+            with utils.LIMIT_LOGGING_LEVEL_INFO:
+                r = self.intra_system_get(intra_system_test_url)
             if r.status_code != 200 and r.status_code != 404:
                 # Note that 404 means that we are able to reach the SYSTEM_HOST, so we're healthy, even if it doesn't implement favicon.ico
                 return r.status_code, [], [('','intra_system_get not functioning: %s' % r.text)]
@@ -593,12 +597,13 @@ class Domain_Logic(object):
 
     def intra_system_get(self, request_url, headers=None):
         if not headers: headers = dict()
-        get_url = utils.set_resource_host_header(str(request_url), headers)
+        actual_url = utils.set_resource_host_header(str(request_url), headers)
         if not 'SSSESSIONID' in headers:
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Accept' in headers:
             headers['Accept'] = 'application/rdf+json+ce'
-        return requests.get(get_url, headers=headers)
+        logger.debug('intra_system_get request_url: %s actual_url: %s headers: %s', request_url, actual_url, headers)
+        return requests.get(actual_url, headers=headers)
 
     def intra_system_post(self, request_url, data, headers=None):
         if not headers: headers = dict()
@@ -608,8 +613,9 @@ class Domain_Logic(object):
             headers['Content-Type'] = 'application/rdf+json+ce'
         if not 'CE-Post-Reason' in headers:
             headers['CE-Post-Reason'] = 'CE-Create'
-        post_url = utils.set_resource_host_header(str(request_url), headers)
-        return requests.post(post_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
+        actual_url = utils.set_resource_host_header(str(request_url), headers)
+        logger.debug('intra_system_post request_url: %s actual_url: %s headers: %s data: %s', request_url, actual_url, headers,data)
+        return requests.post(actual_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
         
     def intra_system_patch(self, request_url, modification_count, data, headers=None):
         if not headers: headers = dict()
@@ -618,15 +624,17 @@ class Domain_Logic(object):
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/rdf+json+ce'
         headers['CE-ModificationCount'] = str(modification_count)
-        patch_url = utils.set_resource_host_header(str(request_url), headers)
-        return requests.patch(patch_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
+        actual_url = utils.set_resource_host_header(str(request_url), headers)
+        logger.debug('intra_system_patch request_url: %s actual_url: %s headers: %s data: %s', request_url, actual_url, headers,data)
+        return requests.patch(actual_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
 
     def intra_system_delete(self, request_url, headers=None):
         if not headers: headers = dict()
         if not 'SSSESSIONID' in headers:
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
-        delete_url = utils.set_resource_host_header(str(request_url), headers)
-        return requests.delete(delete_url, headers=headers, verify=False)
+        actual_url = utils.set_resource_host_header(str(request_url), headers)
+        logger.debug('intra_system_delete request_url: %s actual_url: %s headers: %s', request_url, actual_url, headers)
+        return requests.delete(actual_url, headers=headers, verify=False)
         
     def intra_system_put(self, request_url, data, headers=None):
         if not headers: headers = dict()
@@ -634,9 +642,9 @@ class Domain_Logic(object):
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/rdf+json+ce'
-        put_url = utils.set_resource_host_header(str(request_url), headers)
-        print put_url
-        return requests.put(put_url, headers=headers,  data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
+        actual_url = utils.set_resource_host_header(str(request_url), headers)
+        logger.debug('intra_system_put request_url: %s actual_url: %s headers: %s data: %s', request_url, actual_url, headers,data)
+        return requests.put(actual_url, headers=headers,  data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
 
 def get_header(header, headers, default=None):
     headerl = header.lower()
