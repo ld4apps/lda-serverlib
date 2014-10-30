@@ -614,7 +614,8 @@ class Domain_Logic(object):
     def check_input_value(self, rdf_document, predicate, field_errors, value_type=None, required=True, subject=None, expected_value=None):
         return rdf_document.check_value(predicate, field_errors, value_type, required, subject, expected_value)
 
-    def intra_system_get(self, request_url, headers={}):
+    def intra_system_get(self, request_url, headers=None):
+        if not headers: headers = dict()
         get_url = utils.set_resource_host_header(str(request_url), headers)
         if not 'SSSESSIONID' in headers:
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
@@ -622,7 +623,8 @@ class Domain_Logic(object):
             headers['Accept'] = 'application/rdf+json+ce'
         return requests.get(get_url, headers=headers)
 
-    def intra_system_post(self, request_url, data, headers={}):
+    def intra_system_post(self, request_url, data, headers=None):
+        if not headers: headers = dict()
         if not 'SSSESSIONID' in headers:
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
@@ -632,7 +634,8 @@ class Domain_Logic(object):
         post_url = utils.set_resource_host_header(str(request_url), headers)
         return requests.post(post_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
         
-    def intra_system_patch(self, request_url, modification_count, data, headers={}):
+    def intra_system_patch(self, request_url, modification_count, data, headers=None):
+        if not headers: headers = dict()
         if not 'SSSESSIONID' in headers:
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
@@ -641,13 +644,15 @@ class Domain_Logic(object):
         patch_url = utils.set_resource_host_header(str(request_url), headers)
         return requests.patch(patch_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
 
-    def intra_system_delete(self, request_url, headers={}):
+    def intra_system_delete(self, request_url, headers=None):
+        if not headers: headers = dict()
         if not 'SSSESSIONID' in headers:
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         delete_url = utils.set_resource_host_header(str(request_url), headers)
         return requests.delete(delete_url, headers=headers, verify=False)
         
-    def intra_system_put(self, request_url, data, headers={}):
+    def intra_system_put(self, request_url, data, headers=None):
+        if not headers: headers = dict()
         if not 'SSSESSIONID' in headers:
             headers['SSSESSIONID'] = utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
