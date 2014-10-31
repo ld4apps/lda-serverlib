@@ -5,6 +5,18 @@ import requests, urlparse
 import json
 from base_constants import ADMIN_USER
 from rdf_json import RDF_JSON_Encoder
+import url_policy as url_policy_module
+
+import logging
+logger = logging.getLogger(__name__)
+class LimitLogging():
+    def __init__(self, lvl):
+        self.level=lvl
+    def __enter__(self):
+       logging.disable(self.level)
+    def __exit__(self, a, b, c):
+       logging.disable(logging.NOTSET)
+LIMIT_LOGGING_LEVEL_INFO = LimitLogging(logging.INFO)
 
 SYSTEM_HOST = os.environ.get('SYSTEM_HOST') if 'SYSTEM_HOST' in os.environ else None
 
@@ -27,7 +39,7 @@ def get_claims(environ):
         return cryptography.decode_jwt(session_key) 
     else:
         return None       
-        
+
 def get_or_create_claims(environ):
     jwt = get_jwt(environ)
     if jwt:
@@ -44,14 +56,14 @@ def get_or_create_claims(environ):
         claims = create_anonymous_user_claims(environ)
         environ['SSSESSIONID'] = cryptography.encode_jwt(claims)
     return claims
-        
+
 def create_anonymous_user_claims(environ):
     host = get_request_host(environ)
     anonymous_user = 'http://%s/unknown_user/%s' % (host, uuid.uuid4())
     return {'user': anonymous_user} 
 
-def get_request_host(environ):
-    return environ.get('HTTP_CE_RESOURCE_HOST') or environ['HTTP_HOST']
+def get_request_host(environ): # TODO: remove this and make callers use get_request_host function in lda-clientlib
+    return url_policy_module.get_request_host(environ)
 
 def get_request_url(environ):
         host = get_request_host(environ)
@@ -64,15 +76,20 @@ def get_request_url(environ):
 def set_resource_host_header(request_url, headers):
     if SYSTEM_HOST is not None:
         parts = list(urlparse.urlparse(request_url))
-        headers['CE-Resource-Host'] = parts[1]
+        if not parts[0]:
+            parts[0] = 'http'
+        if parts[1]:
+            headers['CE-Resource-Host'] = parts[1]
         parts[1] = SYSTEM_HOST
         return urlparse.urlunparse(tuple(parts))
     else:
         return request_url
 
-def intra_system_get(request_url, headers={}):
-    get_url = set_resource_host_header(str(request_url), headers)
-    return requests.get(get_url, headers=headers)
+def intra_system_get(request_url, headers=None):
+    if not headers: headers = dict()
+    actual_url = set_resource_host_header(str(request_url), headers)
+    logger.debug('intra_system_get request_url: %s actual_url: %s headers: %s', request_url, actual_url, headers)
+    return requests.get(actual_url, headers=headers)
 
 CONTENT_RDF_JSON_HEADER = {
     'Content-type' : 'application/rdf+json+ce',
@@ -80,8 +97,9 @@ CONTENT_RDF_JSON_HEADER = {
     'ce-post-reason' : 'ce-create'
     }
 
-def intra_system_post(request_url, data, headers=CONTENT_RDF_JSON_HEADER):
-    post_url = set_resource_host_header(request_url, headers)
-    return requests.post(post_url, headers=headers, data=json.dumps(data, cls=RDF_JSON_Encoder), verify=False)
+def intra_system_post(request_url, data, headers=None):
+    if not headers: headers = CONTENT_RDF_JSON_HEADER.copy()
+    actual_url = set_resource_host_header(request_url, headers)
+    logger.debug('intra_system_post request_url: %s actual_url: %s headers: %s data: %s', request_url, actual_url, headers, data)
+    return requests.post(actual_url, headers=headers, data=json.dumps(data, cls=RDF_JSON_Encoder), verify=False)
     return None
-

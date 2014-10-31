@@ -12,6 +12,8 @@ import os
 import threading
 import logging
 
+logger=logging.getLogger(__name__)
+
 def get_timestamp():
     #return datetime.utcnow()
     return datetime.now(tz.tzutc())
@@ -39,21 +41,21 @@ def get_lineage():
         upsert = True,
         full_response = True)
     if not result['ok']: # "No matching object found"
-        logging.debug('find_and_modify_command failed to find or create lineage_document - errmsg: %s datetime: %s' % (result['errmsg'],  datetime.now()))
+        logger.debug('find_and_modify_command failed to find or create lineage_document - errmsg: %s datetime: %s' % (result['errmsg'],  datetime.now()))
     else:
         lastErrorObject = result['lastErrorObject']
         if lastErrorObject['n'] == 1:
             lineage = result['value']['lineage_value']
             if lastErrorObject['updatedExisting']:
-                logging.debug('find_and_modify_command successfully incremented lineage property of existing document. New value is: %d proc_id: %s datetime: %s' % (lineage, os.getpid(),  datetime.now()))
+                logger.debug('find_and_modify_command successfully incremented lineage property of existing document. New value is: %d proc_id: %s datetime: %s' % (lineage, os.getpid(),  datetime.now()))
             else:
-                logging.debug('find_and_modify_command successfully created new lineage document. Value of lineage property is: %d proc_id: %s datetime: %s' % (lineage, os.getpid(),  datetime.now()))
+                logger.debug('find_and_modify_command successfully created new lineage document. Value of lineage property is: %d proc_id: %s datetime: %s' % (lineage, os.getpid(),  datetime.now()))
             return lineage
         else:
             if lastErrorObject['updatedExisting']:
-                logging.debug('find_and_modify_command failed to increment lineage property of existing document. Proc_id: %s datetime: %s' % (os.getpid(), datetime.now()))
+                logger.debug('find_and_modify_command failed to increment lineage property of existing document. Proc_id: %s datetime: %s' % (os.getpid(), datetime.now()))
             else: 
-                logging.debug('find_and_modify_command failed to create initial lineage document Proc_id: %s datetime: ' % (os.getpid(),  datetime.now()))
+                logger.debug('find_and_modify_command failed to create initial lineage document Proc_id: %s datetime: ' % (os.getpid(),  datetime.now()))
     return -1
 
 #TODO: The following constants are also defined in storage_mapping. Can't we put them in one place and share?
@@ -127,14 +129,14 @@ def execute_query(user, query, public_hostname, tenant, namespace, projection=No
     """
     collection_url = url_policy.construct_url(public_hostname, tenant, namespace, None)
     query = query_to_storage(query, public_hostname, collection_url)
-    #logging.debug(query)
+    logger.debug('execute_query: MongoDB query %s', query)
     if projection is None:
         cursor = MONGO_DB[make_collection_name(tenant, namespace)].find(query)
     else:
         # Note: projection must NOT suppress the @id field (@id is needed by the storage format conversion routine)
         cursor = MONGO_DB[make_collection_name(tenant, namespace)].find(query, projection)       
     result = get_query_result(cursor, public_hostname)
-    #logging.debug(result)
+    #logger.debug('execute_query: MongoDB result %s', result)
     return 200, result
 
 def get_document(user, public_hostname, tenant, namespace, documentId):
@@ -192,7 +194,7 @@ def get_prior_versions(user, public_hostname, tenant, namespace, history):
     query = {'@id': {'$in': [fix_up_url_for_storage(version, public_hostname, '/') for version in history]}}
     cursor = MONGO_DB[make_collection_name(tenant, namespace + '_history')].find(query)
     result = get_query_result(cursor, public_hostname)
-    #logging.debug(result)
+    #logger.debug(result)
     return 200, result
         
 def patch_document(user, mod_count, new_values, public_hostname, tenant, namespace, document_id):
