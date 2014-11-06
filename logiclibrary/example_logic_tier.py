@@ -98,7 +98,7 @@ class Domain_Logic(object):
 
     def insert_document(self, container, document, document_id=None):
         if CHECK_ACCESS_RIGHTS:
-            status, permissions = self.permissions(container)
+            status, permissions = self.permissions(container, document)
             if status == 200:
                 if not permissions & AC_C:
                     return 403, [], [('', 'not authorized')]
@@ -161,7 +161,7 @@ class Domain_Logic(object):
         """
         return 400, [], [('', 'unknown action')]
 
-    def permissions(self, document):
+    def permissions(self, document, insert_document=None):
         owner = document.get_value(CE+'owner')
         if self.user == str(owner):
             return 200, AC_ALL # owner can do everything
@@ -270,7 +270,16 @@ class Domain_Logic(object):
           others                  => headers may be an empty list or may optionally include headers to return to the client
                                      body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error
-        """
+        """ 
+        resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
+        document = self.get_document()[2]
+        if CHECK_ACCESS_RIGHTS:
+            status, permissions = self.permissions(document)
+            if status == 200:
+                if not permissions & AC_C:
+                    return 403, [], [('', 'not authorized')]
+            else:
+                return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
         if self.document_id is None:
             return self.drop_collection()
         if not self.namespace: #trailing / or other problem
@@ -309,14 +318,23 @@ class Domain_Logic(object):
         if not self.namespace: #trailing / or other problem
             return self.bad_path()
         resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
+        document = rdf_json.RDF_JSON_Document(request_body, resource_url)
+        if CHECK_ACCESS_RIGHTS:
+            prepatch_document = self.get_document()[2]
+            status, permissions = self.permissions(prepatch_document)
+            if status == 200:
+                if not permissions & AC_C:
+                    return 403, [], [('', 'not authorized')]
+            else:
+                return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
         if not 'HTTP_CE_MODIFICATIONCOUNT' in self.environ:
             return 400, [], [('', 'Must provide CE-ModificationCount header')]
         try:
             mod_count = int(self.environ['HTTP_CE_MODIFICATIONCOUNT'])
         except ValueError:
             return 400, [], [('', 'CE-ModificationCount header must be an integer: %s' % self.environ['HTTP_CE-MODIFICATIONCOUNT'])]
-        self.preprocess_properties_for_storage_insertion(rdf_json.RDF_JSON_Document(request_body, resource_url))
-        status, result = operation_primitives.patch_document(self.user, mod_count, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)
+        self.preprocess_properties_for_storage_insertion(document)
+        status, result = operation_primitives.patch_document(self.user, mod_count, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)   
         if(status == 200):
             get_status, headers, new_document = self.get_document()
             if(get_status == 200):
