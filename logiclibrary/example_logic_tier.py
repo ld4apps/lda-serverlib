@@ -270,7 +270,7 @@ class Domain_Logic(object):
           others                  => headers may be an empty list or may optionally include headers to return to the client
                                      body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error
-        """ 
+        """
         resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
         document = self.get_document()[2]
         if CHECK_ACCESS_RIGHTS:
@@ -334,7 +334,7 @@ class Domain_Logic(object):
         except ValueError:
             return 400, [], [('', 'CE-ModificationCount header must be an integer: %s' % self.environ['HTTP_CE-MODIFICATIONCOUNT'])]
         self.preprocess_properties_for_storage_insertion(document)
-        status, result = operation_primitives.patch_document(self.user, mod_count, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)   
+        status, result = operation_primitives.patch_document(self.user, mod_count, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)
         if(status == 200):
             get_status, headers, new_document = self.get_document()
             if(get_status == 200):
