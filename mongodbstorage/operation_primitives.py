@@ -19,9 +19,9 @@ def get_timestamp():
     return datetime.now(tz.tzutc())
 
 MONGO_CLIENT = MongoClient(os.environ['MONGODB_DB_HOST'], int(os.environ['MONGODB_DB_PORT']), tz_aware=True)
-MONGODB_DB_NAME = os.environ['MONGODB_DB_NAME'] if 'MONGODB_DB_NAME' in os.environ else os.environ['APP_NAME'] 
+MONGODB_DB_NAME = os.environ['MONGODB_DB_NAME'] if 'MONGODB_DB_NAME' in os.environ else os.environ['APP_NAME']
 MONGO_DB = MONGO_CLIENT[MONGODB_DB_NAME]
-if 'MONGODB_DB_USERNAME' in os.environ: 
+if 'MONGODB_DB_USERNAME' in os.environ:
     MONGO_DB.authenticate(os.environ['MONGODB_DB_USERNAME'], os.environ['MONGODB_DB_PASSWORD'])
 
 next_id = 1
@@ -35,9 +35,9 @@ def get_lineage():
     result = MONGO_DB.command(
         'findAndModify',
         'lineages_collection',
-        query  = {'_id': 'lineage_document'}, 
-        update = {'$inc': {'lineage_value': 1}}, 
-        new    = True, 
+        query  = {'_id': 'lineage_document'},
+        update = {'$inc': {'lineage_value': 1}},
+        new    = True,
         upsert = True,
         full_response = True)
     if not result['ok']: # "No matching object found"
@@ -54,7 +54,7 @@ def get_lineage():
         else:
             if lastErrorObject['updatedExisting']:
                 logger.debug('find_and_modify_command failed to increment lineage property of existing document. Proc_id: %s datetime: %s' % (os.getpid(), datetime.now()))
-            else: 
+            else:
                 logger.debug('find_and_modify_command failed to create initial lineage document Proc_id: %s datetime: ' % (os.getpid(),  datetime.now()))
     return -1
 
@@ -71,14 +71,14 @@ HISTORY = CE+'history'
 ID = CE+'id'
 
 SYSTEM_PROPERTIES = (CREATOR, CREATED, MODIFICATIONCOUNT, LASTMODIFIED, LASTMODIFIEDBY, HISTORY, '@id', '_id')
-        
+
 def create_document(user, document, public_hostname, tenant, namespace, resource_id=None):
     """
     Create a new document in the collection identified by 'public_hostname', 'tenant', and 'namespace'.
-    
+
     The 'document' argument specifies the new document to be stored, in rdf_json format. Before it's put
     into the database, the rdf_json is first converted to the following storage format:
-    
+
       {
         '_id': docId (may be provided by caller in '' subject in json_ld, or a value provided here)
         '_modificationCount': number
@@ -94,8 +94,8 @@ def create_document(user, document, public_hostname, tenant, namespace, resource
           }
         ]
       }
-    
-    Return: 
+
+    Return:
         Success: (201, <new-document-url:string>, <new-document:rdf_json>)
         Error: (<status-code:int>, None, <errror-msg:string>)
     """
@@ -118,12 +118,12 @@ def create_document(user, document, public_hostname, tenant, namespace, resource
 
 def execute_query(user, query, public_hostname, tenant, namespace, projection=None):
     """
-    Execute the specified 'query' against the collection identified by 'public_hostname', 'tenant', 
+    Execute the specified 'query' against the collection identified by 'public_hostname', 'tenant',
     and 'namespace'.
-    
+
     This fuction always succeeds and returns a list of 0 or more matching documents.
-    
-    Return: 
+
+    Return:
         Success: (200, [<result-document1:rdf_json>, <result-document2:rdf_json>, ...])
         Error: no errors
     """
@@ -134,7 +134,7 @@ def execute_query(user, query, public_hostname, tenant, namespace, projection=No
         cursor = MONGO_DB[make_collection_name(tenant, namespace)].find(query)
     else:
         # Note: projection must NOT suppress the @id field (@id is needed by the storage format conversion routine)
-        cursor = MONGO_DB[make_collection_name(tenant, namespace)].find(query, projection)       
+        cursor = MONGO_DB[make_collection_name(tenant, namespace)].find(query, projection)
     result = get_query_result(cursor, public_hostname)
     #logger.debug('execute_query: MongoDB result %s', result)
     return 200, result
@@ -142,8 +142,8 @@ def execute_query(user, query, public_hostname, tenant, namespace, projection=No
 def get_document(user, public_hostname, tenant, namespace, documentId):
     """
     Get the document specified by 'public_hostname', 'tenant', 'namespace', and 'document_id'.
-    
-    Return: 
+
+    Return:
         Success: (200, <result-document:rdf_json>)
         Error: (<status-code:int>, <errror-msg:string>)
     """
@@ -159,20 +159,20 @@ def get_document(user, public_hostname, tenant, namespace, documentId):
 def delete_document(user, public_hostname, tenant, namespace, document_id):
     """
     Delete the document specified by 'public_hostname', 'tenant', 'namespace', and 'document_id'.
-    
+
     If the document doesn't exist, this fuction is a NO-OP.
 
-    Return: 
+    Return:
         Success: (200, None)
         Error: no errors
     """
     MONGO_DB[make_collection_name(tenant, namespace)].remove(document_id, True)
     #TODO: check how many things Mongo actually deleted...
     return 200, None
-    
+
 def drop_collection(user, public_hostname, tenant, namespace):
     MONGO_DB[make_collection_name(tenant, namespace)].drop()
-    
+
 def create_history_document(user, public_hostname, tenant, namespace, document_id):
     cursor = MONGO_DB[make_collection_name(tenant, namespace)].find({'_id': document_id})
     try: storage_json = cursor.next()
@@ -196,14 +196,14 @@ def get_prior_versions(user, public_hostname, tenant, namespace, history):
     result = get_query_result(cursor, public_hostname)
     #logger.debug(result)
     return 200, result
-        
+
 def patch_document(user, mod_count, new_values, public_hostname, tenant, namespace, document_id):
     """
     Patch the document specified by 'public_hostname', 'tenant', 'namespace', and 'document_id' with the
     content in 'document'.
-    
+
     The patch 'document' must contain a list with 2 entries:
-    
+
         [<modification-count:int>, <patch-document:rdf_json>]
 
     The modification count must be the value of the resource's modification count that was last read by the
@@ -212,20 +212,20 @@ def patch_document(user, mod_count, new_values, public_hostname, tenant, namespa
     returned. If the update query succeeds, the modification count in the database will be incremented by 1,
     the updates will be made, and an HTTP 200 (OK) status code will be returned. A history document will also
     be created to capture the previous state of the resource.
-   
-    Note that creating a history document is idempotent and safe (in practice, if not in principle). 
+
+    Note that creating a history document is idempotent and safe (in practice, if not in principle).
     This means that if there is a failure after creating the history document, and before the patch operation,
     the whole thing can be safely re-run. This may result in two identical history documents, where nomally
     there would be a difference between any two history documents, but this is perfectly harmless. Only the
     history document whose ID is referenced in the successful patch operation will ever be looked at, so the
     other is just wasting a little disk space.
-    
-    Return: 
+
+    Return:
         Success: (200, None)
         Error: (<status-code:int>, <errror-msg:string>)
     """
     status, history_document_id = create_history_document(user, public_hostname, tenant, namespace, document_id)
-    if status == 201:                        
+    if status == 201:
         if mod_count == -1:
             mod_count_criteria = False
         else:
@@ -240,8 +240,8 @@ def patch_document(user, mod_count, new_values, public_hostname, tenant, namespa
             if last_err['n'] == 1:
                 mod_count = mod_count + 1
             else:
-                return 409, 'unexpected update count %s' % last_err        
-        for subject_url, subject_node in new_values.iteritems(): # have to patch one subject at a time, unfortunately 
+                return 409, 'unexpected update count %s' % last_err
+        for subject_url, subject_node in new_values.iteritems(): # have to patch one subject at a time, unfortunately
             if subject_node is None: continue
             # first assume the subject is already in the @graph array, and construct a query that will modify it
             criteria = {subject_url : {}}
@@ -262,7 +262,12 @@ def patch_document(user, mod_count, new_values, public_hostname, tenant, namespa
                     subject_unsets['@graph.$.' + predicate_to_mongo(predicate)] = 1
                 else:
                     subject_sets['@graph.$.' + predicate_to_mongo(predicate)] = storage_value_from_rdf_json(value_array, public_hostname, document_url)
-            patch = {'$inc' : {'_modificationCount' : 1}, '$set' : subject_sets, '$unset' : subject_unsets, '$push': {'_history' : history_document_id}}
+            patch = {'$inc' : {'_modificationCount' : 1}, '$set' : subject_sets, '$push': {'_history' : history_document_id}}
+
+            # mongo has breaking change with version 2.5.x and does not allow $unset to be empty. Check subject_unsets before inserting into patch
+            if len(subject_unsets):
+                patch['$unset'] = subject_unsets
+
             last_err = MONGO_DB[collection_name].update(criteria, patch)
             if last_err['n'] == 1:
                 mod_count = mod_count + 1
@@ -277,7 +282,7 @@ def patch_document(user, mod_count, new_values, public_hostname, tenant, namespa
                     if predicate in SYSTEM_PROPERTIES or predicate == '_id': return 400, 'cannot set system property'
                     if isinstance(value_array, (list, tuple)):
                         if len(value_array) > 0:
-                            new_subject[predicate_to_mongo(predicate)] = [storage_value_from_rdf_json(value, public_hostname, document_url) for value in value_array]                        
+                            new_subject[predicate_to_mongo(predicate)] = [storage_value_from_rdf_json(value, public_hostname, document_url) for value in value_array]
                     else:
                         new_subject[predicate_to_mongo(predicate)] = storage_value_from_rdf_json(value_array, public_hostname, document_url)
                 patch = {'$inc' : {'_modificationCount' : 1}, '$set' : subject_sets, '$push': {'_history' : history_document_id, '@graph': new_subject}}
@@ -285,7 +290,7 @@ def patch_document(user, mod_count, new_values, public_hostname, tenant, namespa
                 if last_err['n'] == 1:
                     mod_count = mod_count + 1
                 else:
-                    return 409, 'unexpected update count %s' % last_err 
+                    return 409, 'unexpected update count %s' % last_err
         return 200, None
     else:
         return status, 'failed to create history document'
@@ -299,7 +304,7 @@ def make_objectid():
         rslt = next_id
         next_id += 1
     return '.'.join((lineage, str(rslt)))
-    
+
 def make_historyid():
     global next_history_id
     global history_lineage
@@ -309,7 +314,7 @@ def make_historyid():
         rslt = next_history_id
         next_history_id += 1
     return '.'.join((history_lineage, str(rslt)))
-    
+
 def get_query_result(cursor, public_hostname):
     batchSize = 100
     cursor.batch_size(batchSize)
@@ -320,13 +325,13 @@ def get_query_result(cursor, public_hostname):
         document = rdf_json_from_storage(document, public_hostname)
         response.append(document)
     return response
-            
+
 def make_subject_array(rdf_json, public_hostname, path_url):
     subject_array = []
-    for subject, subject_node in rdf_json.iteritems(): 
+    for subject, subject_node in rdf_json.iteritems():
         json_ld_subject_node = {}
         for predicate, value_array in subject_node.iteritems():
-            if subject == rdf_json.graph_url and predicate in SYSTEM_PROPERTIES: 
+            if subject == rdf_json.graph_url and predicate in SYSTEM_PROPERTIES:
                 return None
             predicate = predicate_to_mongo(predicate)
             value = [storage_value_from_rdf_json(item, public_hostname, path_url) for item in value_array] if isinstance(value_array, (list, tuple)) else storage_value_from_rdf_json(value_array, public_hostname, path_url)
@@ -334,6 +339,6 @@ def make_subject_array(rdf_json, public_hostname, path_url):
         json_ld_subject_node['@id'] = fix_up_url_for_storage(subject, public_hostname, path_url)
         subject_array.append(json_ld_subject_node)
     return subject_array
-        
+
 def make_collection_name(tenant, namespace):
     return tenant + '/' + namespace
