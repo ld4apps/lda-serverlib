@@ -13,9 +13,9 @@ class LimitLogging():
     def __init__(self, lvl):
         self.level=lvl
     def __enter__(self):
-       logging.disable(self.level)
+        logging.disable(self.level)
     def __exit__(self, a, b, c):
-       logging.disable(logging.NOTSET)
+        logging.disable(logging.NOTSET)
 LIMIT_LOGGING_LEVEL_INFO = LimitLogging(logging.INFO)
 
 SYSTEM_HOST = os.environ.get('SYSTEM_HOST') if 'SYSTEM_HOST' in os.environ else None

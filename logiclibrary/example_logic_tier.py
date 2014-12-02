@@ -197,6 +197,9 @@ class Domain_Logic(object):
             return 504, [], [('','intra_system_get exception: %s' % e.message)]
         return 200, [('Content-Type', 'text/plain'), ('Content-length', '1')], ['1']
 
+    def prim_get_document(self):
+        return operation_primitives.get_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
+        
     def get_document(self):
         """
         GET the document associated with 'self'.
@@ -213,7 +216,7 @@ class Domain_Logic(object):
             return self.get_collection()
         if not self.namespace:
             return 404, [], [('', 'no resource with the URL: %s' % self.request_url())]
-        status, document = operation_primitives.get_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
+        status, document = self.prim_get_document()
         if status == 200:
             # we found the document, but is the user entitled to see it?
             if CHECK_ACCESS_RIGHTS:
@@ -284,7 +287,10 @@ class Domain_Logic(object):
             return self.drop_collection()
         if not self.namespace: #trailing / or other problem
             return self.bad_path()
-        status, err_msg = operation_primitives.delete_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
+        # use the information from the document that was fetched, rather than the request params
+        new_url_parts = urlparse.urlparse(document.graph_url)
+        path_parts, namespace, document_id, extra_path_segments = url_policy.parse_path(new_url_parts.path)        
+        status, err_msg = operation_primitives.delete_document(self.user, self.request_hostname, self.tenant, namespace, document_id)
         if self.change_tracking:
             resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
             self.generate_change_event(DELETION_EVENT, resource_url)
@@ -334,7 +340,9 @@ class Domain_Logic(object):
         except ValueError:
             return 400, [], [('', 'CE-ModificationCount header must be an integer: %s' % self.environ['HTTP_CE-MODIFICATIONCOUNT'])]
         self.preprocess_properties_for_storage_insertion(document)
-        status, result = operation_primitives.patch_document(self.user, mod_count, request_body, self.request_hostname, self.tenant, self.namespace, self.document_id)
+        new_url_parts = urlparse.urlparse(document.graph_url)
+        path_parts, namespace, document_id, extra_path_segments = url_policy.parse_path(new_url_parts.path)
+        status, result = operation_primitives.patch_document(self.user, mod_count, request_body, self.request_hostname, self.tenant, namespace, document_id)
         if(status == 200):
             get_status, headers, new_document = self.get_document()
             if(get_status == 200):
@@ -432,8 +440,8 @@ class Domain_Logic(object):
             if len(self.extra_path_segments) == 1 and self.extra_path_segments[0] == 'allVersions' and not self.query_string: # client wants history collection
                 status, document = self.create_all_versions_container(document)
                 return status, document
-        request_url = self.request_url()
-        if document.graph_url != request_url: #usually a bad thing, unless it's an owned container that was being asked for
+        expected_url = self.request_url()
+        if document.graph_url != expected_url: #usually a bad thing, unless it's an owned container that was being asked for
             owned_container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id, self.extra_path_segments)
             if owned_container_url in document.data and URI(LDP+'DirectContainer') in document.get_values(RDF+'type', owned_container_url):
                 document.graph_url = owned_container_url

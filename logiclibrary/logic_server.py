@@ -54,6 +54,9 @@ def post_document(environ, start_response):
     else:
         return make_json_response(400, [], [('', 'unrecognized post reason %s' % post_reason)], 'application/json', start_response)
 
+def get_content_location(environ, document):
+    return str(document.graph_url) if hasattr(document, 'graph_url') else utils.get_request_url(environ)
+    
 def get_document(environ, start_response):
     # In this application architectural style, the only method that ever returns HTML is GET. We never
     # return HTML from POST and we do not support application/x-www-form-urlencoded for POST
@@ -72,7 +75,7 @@ def get_document(environ, start_response):
         return send_auth_challenge(environ, start_response, best_match)
     elif status == 200:
         if not header_set('Content-Location', headers):
-            headers.append(('Content-Location', utils.get_request_url(environ)))
+            headers.append(('Content-Location', get_content_location(environ, body)))
         if not header_set('Cache-Control', headers):
             headers.append(('Cache-Control', 'no-cache'))
         if not header_set('Vary', headers):
@@ -120,7 +123,7 @@ def patch_document(environ, start_response):
         add_standard_headers(environ, headers)
         if status == 200:
             if not header_set('Content-Location', headers):
-                headers.append(('Content-Location', utils.get_request_url(environ)))
+                headers.append(('Content-Location', get_content_location(environ, body)))
             return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
         elif status == 403:
             return send_auth_challenge(environ, start_response)
