@@ -342,3 +342,7 @@ def make_subject_array(rdf_json, public_hostname, path_url):
 
 def make_collection_name(tenant, namespace):
     return tenant + '/' + namespace
+
+def tenant_names(namespace):
+    collection_names = MONGO_DB.collection_names()
+    return [name_split[0] for name_split in [collection_name.split('/') for collection_name in collection_names] if len(name_split) > 1 and name_split[1] == namespace]

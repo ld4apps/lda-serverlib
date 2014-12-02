@@ -32,7 +32,7 @@ class Domain_Logic(object):
         if change_tracking:
             self.trs_builders = {}
 
-    def recurse(self, function, namespace=UNCHANGED, document_id=UNCHANGED, extra_path_segments=UNCHANGED, query_string=UNCHANGED, url=None):
+    def recurse(self, function, namespace=UNCHANGED, document_id=UNCHANGED, extra_path_segments=UNCHANGED, query_string=UNCHANGED, url=None, tenant=UNCHANGED):
         """
         Perform an operation with the same host-name and tenant, but new document_id, extra_segements and query_string.
 
@@ -50,6 +50,7 @@ class Domain_Logic(object):
         original_extra_path_segments = self.extra_path_segments
         original_query_string = self.query_string
         original_path_parts = self.path_parts
+        original_tenant = self.tenant
         try:
             if namespace != UNCHANGED:
                 self.namespace = namespace
@@ -63,6 +64,8 @@ class Domain_Logic(object):
             self.path = '/'.join(self.path_parts)
             if query_string != UNCHANGED:
                 self.query_string = query_string
+            if tenant != UNCHANGED:
+                self.tenant = tenant
             status, headers, document = function()
         finally:
             self.namespace = original_namespace
@@ -71,10 +74,11 @@ class Domain_Logic(object):
             self.extra_path_segments = original_extra_path_segments
             self.query_string = original_query_string
             self.path_parts = original_path_parts
+            self.tenant = original_tenant
         return status, headers, document
 
-    def recursive_get_document(self, namespace=UNCHANGED, document_id=UNCHANGED, extra_path_segments=UNCHANGED, query_string=UNCHANGED, url=None):
-        return self.recurse(self.get_document, namespace, document_id, extra_path_segments, query_string, url)
+    def recursive_get_document(self, namespace=UNCHANGED, document_id=UNCHANGED, extra_path_segments=UNCHANGED, query_string=UNCHANGED, url=None, tenant=UNCHANGED):
+        return self.recurse(self.get_document, namespace, document_id, extra_path_segments, query_string, url, tenant)
 
     def create_document(self, document, document_id=None):
         """
