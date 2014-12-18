@@ -80,7 +80,6 @@ def storage_value_from_rdf_json(rdf_json, public_hostname, path_url):
 def restore_URL_from_storage(url, public_hostname):
     if url.startswith(STORAGE_PREFIX):
         public_url_prefix = 'http://%s'%public_hostname
-        #public_url_prefix = '//%s'%public_hostname
         return public_url_prefix + url[len(STORAGE_PREFIX):]
     else: #must be absolute
         return url
@@ -192,9 +191,6 @@ def query_predicate_to_storage(predicate, value_array, public_hostname, path_url
             elif len(value_array) == 1 and '$exists' in value_array:
                 value = value_array['$exists']
                 return {'$exists' : value}
-            elif len(value_array) == 1 and '$regex' in value_array:
-                value = value_array['$regex']
-                return {'$regex' : value}
             else:
                 raise ValueError('unhandled clause %s' % value_array)
         else:

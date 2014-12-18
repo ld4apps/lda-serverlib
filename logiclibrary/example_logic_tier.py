@@ -454,12 +454,7 @@ class Domain_Logic(object):
             status, document = self.complete_container(document)
         else:
             status = 200
-        request_url = self.request_url()
-        if request_url.startswith('http:'):
-            request_url = request_url[5:]
-        if request_url.startswith('https:'):
-            request_url = request_url[6:]
-        if document.graph_url != request_url and document.graph_url != self.request_url():
+        if document.graph_url != expected_url:
             return 404, [('', 'no document matching that url: %s , graph_url: %s' % (self.request_url(), document.graph_url))]
         else:
             return status, document
