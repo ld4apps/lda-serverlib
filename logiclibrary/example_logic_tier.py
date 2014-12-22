@@ -7,7 +7,7 @@ import utils
 import os
 import requests
 from requests.exceptions import ConnectionError
-from base_constants import RDF, LDP, CE, OWL, TRS, AC, AC_R, AC_C, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
+from base_constants import RDF, LDP, CE, OWL, TRS, AC, AC_R, AC_W, AC_C, AC_D, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
 from base_constants import URL_POLICY as url_policy
 import logging
 
@@ -41,7 +41,7 @@ class Domain_Logic(object):
         """
         if url != None:
             if namespace != UNCHANGED or document_id != UNCHANGED or extra_path_segments != UNCHANGED or query_string != UNCHANGED:
-                raise ValueError('may nor set URL and also set namespace, document_id, extra_path_segments or query_string')
+                raise ValueError('may not set URL and also set namespace, document_id, extra_path_segments or query_string')
             namespace, document_id, extra_path_segments, parse_result = url_policy.parse(url)
             query_string = parse_result.query
         original_namespace = self.namespace
@@ -285,7 +285,7 @@ class Domain_Logic(object):
         if CHECK_ACCESS_RIGHTS:
             status, permissions = self.permissions(document)
             if status == 200:
-                if not permissions & AC_C:
+                if not permissions & AC_D:
                     return 403, [], [('', 'not authorized')]
             else:
                 return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
@@ -337,7 +337,7 @@ class Domain_Logic(object):
                 return status, headers, prepatch_document
             status, permissions = self.permissions(prepatch_document)
             if status == 200:
-                if not permissions & AC_C:
+                if not permissions & AC_W:
                     return 403, [], [('', 'not authorized')]
             else:
                 return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
