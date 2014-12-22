@@ -279,7 +279,9 @@ class Domain_Logic(object):
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error
         """
         resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
-        document = self.get_document()[2]
+        status, headers, document = self.get_document()
+        if status != 200:
+            return status, headers, document
         if CHECK_ACCESS_RIGHTS:
             status, permissions = self.permissions(document)
             if status == 200:
@@ -330,7 +332,9 @@ class Domain_Logic(object):
         resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
         document = rdf_json.RDF_JSON_Document(request_body, resource_url)
         if CHECK_ACCESS_RIGHTS:
-            prepatch_document = self.get_document()[2]
+            status, headers, prepatch_document = self.get_document()
+            if status != 200:
+                return status, headers, prepatch_document
             status, permissions = self.permissions(prepatch_document)
             if status == 200:
                 if not permissions & AC_C:
