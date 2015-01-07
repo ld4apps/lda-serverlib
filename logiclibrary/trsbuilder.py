@@ -44,7 +44,7 @@ if __name__ == '__main__':
     os.environ['MONGODB_DB_HOST'] = 'localhost'
     os.environ['MONGODB_DB_PORT'] = '27017'
 
-from storage import OPERATION_PRIMITIVES as operation_primitives
+from storage import operation_primitives
 
 DEFAULT_SEGMENT_SIZE = 100
 

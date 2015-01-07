@@ -1,4 +1,4 @@
-from storage import OPERATION_PRIMITIVES as operation_primitives
+from storage import operation_primitives
 import urlparse, urllib
 import json, rdf_json
 from rdf_json import URI
