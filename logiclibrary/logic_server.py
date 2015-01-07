@@ -6,19 +6,18 @@ from rdfgraphlib import rdfjson_to_graph, serialize_graph
 import Cookie
 import utils
 import jwt
+import importlib
 
 import logging
 if 'LOGGING_LEVEL' in os.environ:
     LOGGING_LEVEL = os.environ['LOGGING_LEVEL']
     logging.basicConfig(level=getattr(logging, LOGGING_LEVEL.upper(), None))
 
-#logic_tier = importlib.import_module(os.environ['DOMAIN_LOGIC']) # importlib not in Python 2.6
 if 'LOGIC_TIER' in os.environ:
     import_name = os.environ['LOGIC_TIER']
 else:
     import_name = 'logic_tier' #assume it has the standard name and is on the python path
-#logic_tier = importlib.import_module(import_name) # importlib not in Python 2.6
-logic_tier = __import__(import_name, fromlist=['Domain_Logic'])
+logic_tier = importlib.import_module(import_name)
 Domain_Logic = logic_tier.Domain_Logic
 
 def post_document(environ, start_response):
