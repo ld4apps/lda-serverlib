@@ -332,7 +332,7 @@ class Domain_Logic(object):
         resource_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id)
         document = rdf_json.RDF_JSON_Document(request_body, resource_url)
         if CHECK_ACCESS_RIGHTS:
-            status, headers, prepatch_document = self.get_document()
+            status, headers, prepatch_document = self.get_document() # TODO: Use prim get
             if status != 200:
                 return status, headers, prepatch_document
             status, permissions = self.permissions(prepatch_document)

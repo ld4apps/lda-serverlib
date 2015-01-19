@@ -1,0 +1,41 @@
+
+# Documentation here: http://docs.travis-ci.com/user/build-configuration/
+language: python
+python:
+  - "2.7"
+
+services: mongodb
+
+env:
+  - TEST_DIR=setupshop
+  - TEST_DIR=todo
+  #- TEST_DIR=todo-jqm
+  #- TEST_DIR=todo-ko
+
+before_install:
+    - sudo apt-get update
+
+addons:
+  hosts:
+    - hostingsite.localhost
+    - cloudsupplements.localhost
+
+# install dependencies/requirements
+install:
+    # clone other required repos
+    - "cd .."
+    - "git clone https://github.com/ld4apps/lda-serverlib.git"
+    - "git clone https://github.com/ld4apps/lda-clientlib.git"
+    - "git clone https://github.com/ld4apps/lda-siteserver.git"
+    # install dependencies (currently just doing siteserver's seems to work but in the future may need to do it for all repos)
+    - "cd lda-siteserver"
+    - "python setup.py install"
+    - "sudo apt-get install -y nginx"
+    - "cd ../lda-examples"
+
+before_script:
+    # Copy nginx config and start service
+    - sudo cp -f dispatcher.conf /etc/nginx/conf.d/dispatcher.conf
+    - sudo service nginx restart
+
+script: cd $TEST_DIR/test/test_exec && sh run_tests.sh
