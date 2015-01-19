@@ -26,9 +26,11 @@ install:
     - "cd .."
     - "git clone https://github.com/ld4apps/lda-examples.git"
     - "git clone https://github.com/ld4apps/lda-clientlib.git"
-    - "git clone https://github.com/ld4apps/lda-siteserver.git"
+    #- "git clone https://github.com/ld4apps/lda-siteserver.git"
+    - "git clone https://github.com/FityFity/lda-siteserver.git"
     # install dependencies (currently just doing siteserver's seems to work but in the future may need to do it for all repos)
     - "cd lda-siteserver"
+    - "git checkout travis_ci" # TODO: remove this after pull request is accepted
     - "python setup.py install"
     - "sudo apt-get install -y nginx"
     - "cd ../lda-examples"
