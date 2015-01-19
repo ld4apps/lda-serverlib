@@ -24,7 +24,7 @@ addons:
 install:
     # clone other required repos
     - "cd .."
-    - "git clone https://github.com/ld4apps/lda-serverlib.git"
+    - "git clone https://github.com/ld4apps/lda-examples.git"
     - "git clone https://github.com/ld4apps/lda-clientlib.git"
     - "git clone https://github.com/ld4apps/lda-siteserver.git"
     # install dependencies (currently just doing siteserver's seems to work but in the future may need to do it for all repos)
