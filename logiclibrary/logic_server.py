@@ -158,7 +158,7 @@ def explain_options(environ, start_response):
         headers.append(('Access-Control-Allow-Origin', origin))
         headers.append(('Access-Control-Allow-Methods', 'GET, OPTIONS, POST, DELETE, PATCH'))
         headers.append(('Access-Control-Allow-Credentials', 'true'))
-        headers.append(('Access-Control-Allow-Headers', 'SSSESSIONID, If-Modified-Since, CE-Post-Reason, Content-Type'))
+        headers.append(('Access-Control-Allow-Headers', 'Authorization, If-Modified-Since, CE-Post-Reason, Content-Type'))
     start_response('200 OK', headers)
     return []
 
@@ -211,18 +211,18 @@ def add_standard_headers(environ, headers):
         headers.append(('Access-Control-Allow-Origin', origin))
         headers.append(('Access-Control-Allow-Credentials', 'true'))
         headers.append(('Access-Control-Expose-Headers', 'Content-Location, Location'))
-    if ('HTTP_SSSESSIONID' in environ):
+    if ('HTTP_AUTHORIZATION' in environ and environ['HTTP_AUTHORIZATION'].lower().startswith('bearer ')):
         # user credentials from another domain were passed by the client
-        session_key = environ['HTTP_SSSESSIONID']
+        session_key = environ['HTTP_AUTHORIZATION'][len('bearer '):]
         add_cookie = True
         cookie = Cookie.SimpleCookie()
         if ('HTTP_COOKIE' in environ):
             cookie.load(environ['HTTP_COOKIE'])
             if 'SSSESSIONID' in cookie:
                 add_cookie = False
-    elif ('SSSESSIONID' in environ):
+    elif ('GUEST_AUTHORIZATION' in environ):
         #  a JWT for an anonymous user URL was generated for an unauthenticated request or the JWT claims expired
-        session_key = environ['SSSESSIONID']
+        session_key = environ['GUEST_AUTHORIZATION']
         add_cookie = True
     else:
         add_cookie = False

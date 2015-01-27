@@ -27,10 +27,11 @@ def get_jwt(environ):
         cookie.load(environ['HTTP_COOKIE'])
         if 'SSSESSIONID' in cookie:
             session_key = cookie['SSSESSIONID'].value
-    elif ('HTTP_SSSESSIONID' in environ):
-        session_key = environ['HTTP_SSSESSIONID']
-    elif ('SSSESSIONID' in environ):
-        session_key = environ['SSSESSIONID']
+    elif ('HTTP_AUTHORIZATION' in environ and environ['HTTP_AUTHORIZATION'].lower().startswith('bearer ')):
+        # user credentials from another domain were passed by the client
+        session_key = environ['HTTP_AUTHORIZATION'][len('bearer '):]
+    elif ('GUEST_AUTHORIZATION' in environ):
+        session_key = environ['GUEST_AUTHORIZATION']
     return session_key
 
 def get_claims(environ):
@@ -49,12 +50,12 @@ def get_or_create_claims(environ):
             if claims: # we have a verified set of claims, but they have expired
                 del claims['acc']
                 del claims['exp']
-                environ['SSSESSIONID'] = cryptography.encode_jwt(claims)
+                environ['GUEST_AUTHORIZATION'] = cryptography.encode_jwt(claims)
     else:
         claims = None
     if not claims:
         claims = create_anonymous_user_claims(environ)
-        environ['SSSESSIONID'] = cryptography.encode_jwt(claims)
+        environ['GUEST_AUTHORIZATION'] = cryptography.encode_jwt(claims)
     return claims
 
 def create_anonymous_user_claims(environ):

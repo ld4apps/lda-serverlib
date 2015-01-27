@@ -632,11 +632,8 @@ class Domain_Logic(object):
     def intra_system_get(self, request_url, headers=None):
         if not headers: headers = dict()
         actual_url = utils.set_resource_host_header(str(request_url), headers)
-        if not 'SSSESSIONID' in headers:
-            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
-        if not 'Authorization' in headers: # TODO: Change all uses of the SSSESSIONID header to use Authorization (Bearer) header instead, and then remove this
-            if ('HTTP_AUTHORIZATION' in self.environ):
-                headers['Authorization'] = self.environ['HTTP_AUTHORIZATION']
+        if not 'Authorization' in headers:
+            headers['Authorization'] = 'Bearer %s' % utils.get_jwt(self.environ)
         if not 'Accept' in headers:
             headers['Accept'] = 'application/rdf+json+ce'
         logger.debug('intra_system_get request_url: %s actual_url: %s headers: %s', request_url, actual_url, headers)
@@ -644,11 +641,8 @@ class Domain_Logic(object):
 
     def intra_system_post(self, request_url, data, headers=None):
         if not headers: headers = dict()
-        if not 'SSSESSIONID' in headers:
-            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
-        if not 'Authorization' in headers: # TODO: Change all uses of the SSSESSIONID header to use Authorization (Bearer) header instead, and then remove this
-            if ('HTTP_AUTHORIZATION' in self.environ):
-                headers['Authorization'] = self.environ['HTTP_AUTHORIZATION']
+        if not 'Authorization' in headers:
+            headers['Authorization'] = 'Bearer %s' % utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/rdf+json+ce'
         if not 'CE-Post-Reason' in headers:
@@ -659,11 +653,8 @@ class Domain_Logic(object):
 
     def intra_system_patch(self, request_url, modification_count, data, headers=None):
         if not headers: headers = dict()
-        if not 'SSSESSIONID' in headers:
-            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
-        if not 'Authorization' in headers: # TODO: Change all uses of the SSSESSIONID header to use Authorization (Bearer) header instead, and then remove this
-            if ('HTTP_AUTHORIZATION' in self.environ):
-                headers['Authorization'] = self.environ['HTTP_AUTHORIZATION']
+        if not 'Authorization' in headers:
+            headers['Authorization'] = 'Bearer %s' % utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/rdf+json+ce'
         headers['CE-ModificationCount'] = str(modification_count)
@@ -673,22 +664,16 @@ class Domain_Logic(object):
 
     def intra_system_delete(self, request_url, headers=None):
         if not headers: headers = dict()
-        if not 'SSSESSIONID' in headers:
-            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
-        if not 'Authorization' in headers: # TODO: Change all uses of the SSSESSIONID header to use Authorization (Bearer) header instead, and then remove this
-            if ('HTTP_AUTHORIZATION' in self.environ):
-                headers['Authorization'] = self.environ['HTTP_AUTHORIZATION']
+        if not 'Authorization' in headers:
+            headers['Authorization'] = 'Bearer %s' % utils.get_jwt(self.environ)
         actual_url = utils.set_resource_host_header(str(request_url), headers)
         logger.debug('intra_system_delete request_url: %s actual_url: %s headers: %s', request_url, actual_url, headers)
         return requests.delete(actual_url, headers=headers, verify=False)
 
     def intra_system_put(self, request_url, data, headers=None):
         if not headers: headers = dict()
-        if not 'SSSESSIONID' in headers:
-            headers['SSSESSIONID'] = utils.get_jwt(self.environ)
-        if not 'Authorization' in headers: # TODO: Change all uses of the SSSESSIONID header to use Authorization (Bearer) header instead, and then remove this
-            if ('HTTP_AUTHORIZATION' in self.environ):
-                headers['Authorization'] = self.environ['HTTP_AUTHORIZATION']
+        if not 'Authorization' in headers:
+            headers['Authorization'] = 'Bearer %s' % utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/rdf+json+ce'
         actual_url = utils.set_resource_host_header(str(request_url), headers)
