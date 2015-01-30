@@ -84,11 +84,13 @@ class Rdf_json_to_html_converter(object):
         result += g_indent + '</div>'
         return result
 
-    def convert_rdf_json_to_html(self, document):
+    def convert_rdf_json_to_html(self, document, app_js_name=None):
         if not hasattr(document, 'graph_url'): # not an rdf_json document - probably an error condition
             return json.dumps(document, cls=RDF_JSON_Encoder)
         
-        if 'APP_JS_NAME' in os.environ:
+        if app_js_name:
+            application_url = app_js_name
+        elif 'APP_JS_NAME' in os.environ:
             application_url = os.environ['APP_JS_NAME']
         else:
             config_file_name = '/etc/ce/conf.d/%s.conf' % os.environ['APP_NAME']
