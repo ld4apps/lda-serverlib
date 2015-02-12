@@ -6,25 +6,25 @@ python:
 
 services: mongodb
 
+addons:
+    hosts:
+        - hostingsite.localhost
+        - cloudsupplements.localhost
+
 env:
-  - TEST_DIR=setupshop
-  - TEST_DIR=todo
-  #- TEST_DIR=todo-jqm
-  #- TEST_DIR=todo-ko
+    - TEST_DIR=setupshop
+    - TEST_DIR=todo
+    #- TEST_DIR=todo-jqm
+    #- TEST_DIR=todo-ko
 
 before_install:
     - sudo apt-get update
-
-addons:
-  hosts:
-    - hostingsite.localhost
-    - cloudsupplements.localhost
 
 # install dependencies/requirements
 install:
     # clone other required repos
     - "cd .."
-    - "git clone https://github.com/FityFity/lda-examples.git" # TODO: change to ld4apps after pull request is accepted
+    - "git clone https://github.com/ld4apps/lda-examples.git" 
     - "git clone https://github.com/ld4apps/lda-clientlib.git"
     - "git clone https://github.com/ld4apps/lda-siteserver.git"
     # install dependencies (currently just doing siteserver's seems to work but in the future may need to do it for all repos)
