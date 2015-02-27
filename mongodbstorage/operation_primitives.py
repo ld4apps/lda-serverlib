@@ -224,6 +224,11 @@ def patch_document(user, mod_count, new_values, public_hostname, tenant, namespa
         Success: (200, None)
         Error: (<status-code:int>, <errror-msg:string>)
     """
+    try:
+        mod_count = int(mod_count)
+    except ValueError:
+        return 400, 'modification count must be an integer: %s' % mod_count
+
     status, history_document_id = create_history_document(user, public_hostname, tenant, namespace, document_id)
     if status == 201:
         if mod_count == -1:
