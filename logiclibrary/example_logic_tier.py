@@ -343,10 +343,7 @@ class Domain_Logic(object):
                 return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
         if not 'HTTP_CE_MODIFICATIONCOUNT' in self.environ:
             return 400, [], [('', 'Must provide CE-ModificationCount header')]
-        try:
-            mod_count = int(self.environ['HTTP_CE_MODIFICATIONCOUNT'])
-        except ValueError:
-            return 400, [], [('', 'CE-ModificationCount header must be an integer: %s' % self.environ['HTTP_CE-MODIFICATIONCOUNT'])]
+        mod_count = self.environ['HTTP_CE_MODIFICATIONCOUNT']
         self.preprocess_properties_for_storage_insertion(document)
         new_url_parts = urlparse.urlparse(document.graph_url)
         path_parts, namespace, document_id, extra_path_segments = url_policy.parse_path(new_url_parts.path)
