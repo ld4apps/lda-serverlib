@@ -64,13 +64,13 @@ CE = 'http://ibm.com/ce/ns#'
 XSD = 'http://www.w3.org/2001/XMLSchema#'
 CREATOR = DC+'creator'
 CREATED = DC+'created'
-MODIFICATIONCOUNT = CE+'modificationCount'
+REVISION = CE+'revision'
 LASTMODIFIED = CE+'lastModified'
 LASTMODIFIEDBY = CE+'lastModifiedBy'
 HISTORY = CE+'history'
 ID = CE+'id'
 
-SYSTEM_PROPERTIES = (CREATOR, CREATED, MODIFICATIONCOUNT, LASTMODIFIED, LASTMODIFIEDBY, HISTORY, '@id', '_id')
+SYSTEM_PROPERTIES = (CREATOR, CREATED, REVISION, LASTMODIFIED, LASTMODIFIEDBY, HISTORY, '@id', '_id')
 
 def create_document(user, document, public_hostname, tenant, namespace, resource_id=None):
     """
@@ -197,7 +197,7 @@ def get_prior_versions(user, public_hostname, tenant, namespace, history):
     #logger.debug(result)
     return 200, result
 
-def patch_document(user, mod_count, new_values, public_hostname, tenant, namespace, document_id):
+def patch_document(user, revision, new_values, public_hostname, tenant, namespace, document_id):
     """
     Patch the document specified by 'public_hostname', 'tenant', 'namespace', and 'document_id' with the
     content in 'document'.
@@ -225,9 +225,9 @@ def patch_document(user, mod_count, new_values, public_hostname, tenant, namespa
         Error: (<status-code:int>, <errror-msg:string>)
     """
     try:
-        mod_count = int(mod_count)
+        mod_count = int(revision)
     except ValueError:
-        return 400, 'modification count must be an integer: %s' % mod_count
+        return 400, 'revision must be an integer: %s' % revision
 
     status, history_document_id = create_history_document(user, public_hostname, tenant, namespace, document_id)
     if status == 201:

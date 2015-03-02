@@ -341,13 +341,13 @@ class Domain_Logic(object):
                     return 403, [], [('', 'not authorized')]
             else:
                 return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
-        if not 'HTTP_CE_MODIFICATIONCOUNT' in self.environ:
-            return 400, [], [('', 'Must provide CE-ModificationCount header')]
-        mod_count = self.environ['HTTP_CE_MODIFICATIONCOUNT']
+        if not 'HTTP_CE_REVISION' in self.environ:
+            return 400, [], [('', 'Must provide CE-Revision header')]
+        revision = self.environ['HTTP_CE_REVISION']
         self.preprocess_properties_for_storage_insertion(document)
         new_url_parts = urlparse.urlparse(document.graph_url)
         path_parts, namespace, document_id, extra_path_segments = url_policy.parse_path(new_url_parts.path)
-        status, result = operation_primitives.patch_document(self.user, mod_count, request_body, self.request_hostname, self.tenant, namespace, document_id)
+        status, result = operation_primitives.patch_document(self.user, revision, request_body, self.request_hostname, self.tenant, namespace, document_id)
         if(status == 200):
             get_status, headers, new_document = self.get_document()
             if(get_status == 200):
@@ -648,13 +648,13 @@ class Domain_Logic(object):
         logger.debug('intra_system_post request_url: %s actual_url: %s headers: %s data: %s', request_url, actual_url, headers,data)
         return requests.post(actual_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
 
-    def intra_system_patch(self, request_url, modification_count, data, headers=None):
+    def intra_system_patch(self, request_url, revision, data, headers=None):
         if not headers: headers = dict()
         if not 'Authorization' in headers:
             headers['Authorization'] = 'Bearer %s' % utils.get_jwt(self.environ)
         if not 'Content-Type' in headers:
             headers['Content-Type'] = 'application/rdf+json+ce'
-        headers['CE-ModificationCount'] = str(modification_count)
+        headers['CE-Revision'] = str(revision)
         actual_url = utils.set_resource_host_header(str(request_url), headers)
         logger.debug('intra_system_patch request_url: %s actual_url: %s headers: %s data: %s', request_url, actual_url, headers,data)
         return requests.patch(actual_url, headers=headers, data=json.dumps(data, cls=rdf_json.RDF_JSON_Encoder), verify=False)
