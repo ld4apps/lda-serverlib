@@ -11,10 +11,12 @@ XSD_DOUBLE = 'http://www.w3.org/2001/XMLSchema#double'
 CONTENT_RDF_XML = 'application/rdf+xml'
 CONTENT_TEXT_TURTLE = 'text/turtle'
 CONTENT_APPLICATION_X_TURTLE = 'application/x-turtle'
+CONTENT_LD_JSON = 'application/ld+json'
 
 RDF_SERIALIZE_MAP = {CONTENT_RDF_XML : 'xml',
                      CONTENT_TEXT_TURTLE : 'turtle',
-                     CONTENT_APPLICATION_X_TURTLE : 'turtle'}
+                     CONTENT_APPLICATION_X_TURTLE : 'turtle',
+                     CONTENT_LD_JSON : 'json-ld'}
 
 # Convert an rdflib Graph to an RDF/JSON structure
 def graph_to_rdfjson(graph):
@@ -48,7 +50,7 @@ def rdfjson_to_graph(rdfjson):
     return graph
 
 # Serialize a graph with the specified content_type.
-# Supported content_type values are "application/rdf+xml", "text/turtle", and "application/x-turtle".
+# Supported content_type values are "application/json" (JSON-LD), "application/rdf+xml", "text/turtle", and "application/x-turtle".
 def serialize_graph(graph, content_type, wfile=None):
     return graph.serialize(wfile, RDF_SERIALIZE_MAP[content_type])
 

@@ -69,7 +69,8 @@ def get_document(environ, start_response):
                                             'application/rdf+json+ce', # default
                                             'application/rdf+xml',
                                             'text/turtle',
-                                            'application/x-turtle'))
+                                            'application/x-turtle',
+                                            'application/ld+json'))
     if status == 403:
         return send_auth_challenge(environ, start_response, best_match)
     elif status == 200:
@@ -91,7 +92,7 @@ def get_document(environ, start_response):
         elif best_match == 'application/rdf+json':
             body = rdf_json.normalize(body)
             return make_json_response(status, headers, body, best_match, start_response)
-        elif best_match == 'application/rdf+xml' or best_match == 'text/turtle' or best_match == 'application/x-turtle':
+        elif best_match == 'application/rdf+xml' or best_match == 'text/turtle' or best_match == 'application/x-turtle' or best_match == 'application/ld+json':
             body = convert_rdf_json_to_rdf_requested(body, best_match)
             return make_text_response(status, headers, body, best_match, start_response)
         else:

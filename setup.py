@@ -11,6 +11,7 @@ setup(name='lda-serverlib',
                         'pycrypto==2.6.1',
                         'pymongo==2.7',
                         'isodate==0.5.0',
-                        'rdflib==4.1.2',
+                        'rdflib==4.2.0',
+                        'rdflib-jsonld==0.2',
                         'werkzeug==0.9.4']
      )
