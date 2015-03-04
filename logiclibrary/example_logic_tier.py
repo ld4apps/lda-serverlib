@@ -219,6 +219,7 @@ class Domain_Logic(object):
         if self.document_id is None:
             return self.get_collection()
         if not self.namespace:
+            logger.warn("example_logic_tier GET failed (404; no namespace) request {0}".format(self.request_url()))
             return 404, [], [('', 'no resource with the URL: %s' % self.request_url())]
         status, document = self.prim_get_document()
         if status == 200:
@@ -229,10 +230,12 @@ class Domain_Logic(object):
                     if not permissions & AC_R:
                         return 403, [], [('', 'not authorized')]
                 else:
+                    logger.warn("example_logic_tier GET failed (403; no permissions) {0}".format(permissions))
                     return 403, [], [('', 'unable to retrieve permissions. status: %s text: %s' % (status, permissions))]
             status, document = self.complete_request_document(document)
             return status, [], document
         else:
+            logger.warn("example_logic_tier GET failed (prim_get_document) {0}: {1}".format(status, document))
             return status, [], [('', document)]
 
     def get_collection(self):

@@ -163,6 +163,7 @@ def get_document(user, public_hostname, tenant, namespace, documentId):
         document = rdf_json_from_storage(document, public_hostname)
         return 200, document
     else:
+        logger.warn("mongodbstorage operation_primitives could not fetch {0} in namespace {1} for tenant {2}".format(documentId, namespace, tenant))
         return 404, '404 not found'
 
 def delete_document(user, public_hostname, tenant, namespace, document_id):

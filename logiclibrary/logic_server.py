@@ -13,6 +13,8 @@ if 'LOGGING_LEVEL' in os.environ:
     LOGGING_LEVEL = os.environ['LOGGING_LEVEL']
     logging.basicConfig(level=getattr(logging, LOGGING_LEVEL.upper(), None))
 
+logger = logging.getLogger(__name__)
+
 if 'LOGIC_TIER' in os.environ:
     import_name = os.environ['LOGIC_TIER']
 else:
