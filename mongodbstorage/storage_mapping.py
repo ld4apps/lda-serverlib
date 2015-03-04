@@ -9,7 +9,7 @@ from base_constants import XSD, RDF, CE, DC
 
 STORAGE_PREFIX = 'urn:ce:'
 
-MODIFICATIONCOUNT = CE+'modificationCount'
+REVISION = CE+'revision'
 LASTMODIFIED = CE+'lastModified'
 LASTMODIFIEDBY = CE+'lastModifiedBy'
 
@@ -140,7 +140,7 @@ def rdf_json_from_storage (storage_json, public_hostname):
         if graph_subject_url not in rdf_json:
             rdf_json[graph_subject_url] = {}
     if '_modificationCount' in storage_json:
-        rdf_json[graph_subject_url][MODIFICATIONCOUNT] = storage_json['_modificationCount']
+        rdf_json[graph_subject_url][REVISION] = str(storage_json['_modificationCount'])
     if '_lastModified' in storage_json:
         rdf_json[graph_subject_url][LASTMODIFIED] = storage_json['_lastModified']
     if '_lastModifiedBy' in storage_json:
