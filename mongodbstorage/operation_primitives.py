@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
+from pymongo.errors import ConnectionFailure
 from datetime import datetime
 from dateutil import tz
 from storage_mapping import rdf_json_from_storage
@@ -11,6 +12,7 @@ from base_constants import URL_POLICY as url_policy
 import os
 import threading
 import logging
+import time
 
 logger=logging.getLogger(__name__)
 
@@ -18,7 +20,14 @@ def get_timestamp():
     #return datetime.utcnow()
     return datetime.now(tz.tzutc())
 
-MONGO_CLIENT = MongoClient(os.environ['MONGODB_DB_HOST'], int(os.environ['MONGODB_DB_PORT']), tz_aware=True)
+try:
+    MONGO_CLIENT = MongoClient(os.environ['MONGODB_DB_HOST'], int(os.environ['MONGODB_DB_PORT']), tz_aware=True)
+except ConnectionFailure, e:
+    # On connection error sleep for 10 seconds and try again, Mongo might still be coming up.
+    logger.info("Sleeping for 10 seconds hoping that MongoDB starts accepting connections")
+    time.sleep(10)
+    MONGO_CLIENT = MongoClient(os.environ['MONGODB_DB_HOST'], int(os.environ['MONGODB_DB_PORT']), tz_aware=True)
+    
 MONGODB_DB_NAME = os.environ['MONGODB_DB_NAME'] if 'MONGODB_DB_NAME' in os.environ else os.environ['APP_NAME']
 MONGO_DB = MONGO_CLIENT[MONGODB_DB_NAME]
 if 'MONGODB_DB_USERNAME' in os.environ:
@@ -154,6 +163,7 @@ def get_document(user, public_hostname, tenant, namespace, documentId):
         document = rdf_json_from_storage(document, public_hostname)
         return 200, document
     else:
+        logger.warn("mongodbstorage operation_primitives could not fetch {0} in namespace {1} for tenant {2}".format(documentId, namespace, tenant))
         return 404, '404 not found'
 
 def delete_document(user, public_hostname, tenant, namespace, document_id):
