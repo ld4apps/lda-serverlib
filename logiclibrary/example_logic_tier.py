@@ -7,7 +7,7 @@ import utils
 import os
 import requests
 from requests.exceptions import ConnectionError
-from base_constants import RDF, LDP, CE, OWL, TRS, AC, AC_R, AC_W, AC_C, AC_D, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
+from base_constants import RDF, RDFS, LDP, CE, OWL, TRS, AC, AC_R, AC_W, AC_C, AC_D, AC_ALL, ADMIN_USER, NAMESPACE_MAPPINGS
 from base_constants import URL_POLICY as url_policy
 import logging
 
@@ -202,6 +202,27 @@ class Domain_Logic(object):
         return 200, [('Content-Type', 'text/plain'), ('Content-length', '1')], ['1']
 
     def prim_get_document(self):
+        if not self.document_id and 'rdfs_label=' in self.query_string:
+            query_parms=urlparse.parse_qs(self.query_string)
+            query = {'_any': {RDFS+'label' : query_parms['rdfs_label'][0]}}
+            status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
+            if status == 200:
+                logger.info('Successful query for url: %s query: %s number of results: %s', self.request_url(), query, len(result))
+                if len(result) == 1:
+                    document = result[0]
+                    new_url_parts = urlparse.urlparse(document.graph_url)
+                    document_id = url_policy.parse_path(new_url_parts.path)[2]
+                    self.document_id = document_id
+                    self.query_string = ''
+                    return 200, document
+                elif len(result) > 1:
+                    get_all = query_parms.get('all')
+                    if get_all and (get_all[0] == 'true' or get_all[0] == '1'):
+                        return 200, result
+                    logger.info('Multiple query matches for url : %s query: %s status: %s', self.request_url(), query, status)                   
+                    return 409, ['Duplicate label, use ?all=1 to retrieve list of resources']
+            logger.info('Failed query for url: %s query: %s status: %s', self.request_url(), query, status)                   
+            return 404, ['Not found']
         return operation_primitives.get_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
         
     def get_document(self):
@@ -216,7 +237,7 @@ class Domain_Logic(object):
                                      body should be a list of pairs, where the first element of the pair identifies the field in error, or is ''.
                                      The second element of the pair should start with a number, a space, and an optional string explaining the error
         """
-        if self.document_id is None:
+        if not self.document_id and 'rdfs_label=' not in self.query_string:
             return self.get_collection()
         if not self.namespace:
             logger.warn("example_logic_tier GET failed (404; no namespace) request {0}".format(self.request_url()))
