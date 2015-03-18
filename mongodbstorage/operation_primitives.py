@@ -14,9 +14,21 @@ import threading
 import logging
 import time
 
+"""MongoDB-based implementation of Operation Primitives
+
+Expects OS environment variables MONGODB_DB_HOST, MONGODB_DB_PORT
+Optional OS environment variables MONGODB_DB_NAME, APP_NAME, MONGODB_DB_USERNAME, MONGODB_DB_PASSWORD
+
+@see: lda-serverlib/logiclibrary/storage.py for an example of how to load operation_primitives indirectly
+"""
+
 logger=logging.getLogger(__name__)
 
 def get_timestamp():
+    """Get the current time
+    @return: datetime.datetime
+    """
+    
     #return datetime.utcnow()
     return datetime.now(tz.tzutc())
 
@@ -113,16 +125,21 @@ def create_document(user, document, public_hostname, tenant, namespace, resource
     document_url = url_policy.construct_url(public_hostname, tenant, namespace, resource_id)
     subject_array = make_subject_array(document, public_hostname, document_url)
     if subject_array is None:
+        logger.warn("create_document could not set system property")
         return 400, None, 'cannot set system property'
     timestamp = get_timestamp()
     json_ld = {'_id' : resource_id, '@graph': subject_array, '@id' : fix_up_url_for_storage('', public_hostname, document_url)}
     json_ld['_modificationCount'] =  0
     json_ld['_created'] = json_ld['_lastModified'] = timestamp
     json_ld['_createdBy'] = json_ld['_lastModifiedBy'] = fix_up_url_for_storage(user, public_hostname, document_url)
+    
     try:
         MONGO_DB[make_collection_name(tenant, namespace)].insert(json_ld)
     except DuplicateKeyError:
+        logger.warn("create_document: duplicate document id {0}".format(resource_id))
         return 409, None, 'duplicate document id: %s' % resource_id
+    
+    logger.info("created document {0}".format(document_url))
     return 201, document_url, rdf_json_from_storage(json_ld, public_hostname) # status_code, headers, body (which could contain error info)
 
 def execute_query(user, query, public_hostname, tenant, namespace, projection=None):
@@ -146,6 +163,7 @@ def execute_query(user, query, public_hostname, tenant, namespace, projection=No
         cursor = MONGO_DB[make_collection_name(tenant, namespace)].find(query, projection)
     result = get_query_result(cursor, public_hostname)
     #logger.debug('execute_query: MongoDB result %s', result)
+    logger.debug("executed query {0}".format(query))
     return 200, result
 
 def get_document(user, public_hostname, tenant, namespace, documentId):
@@ -161,9 +179,10 @@ def get_document(user, public_hostname, tenant, namespace, documentId):
     except StopIteration: document = None
     if document is not None:
         document = rdf_json_from_storage(document, public_hostname)
+        logger.debug("retrieved document {0}".format(documentId))
         return 200, document
     else:
-        logger.warn("mongodbstorage operation_primitives could not fetch {0} in namespace {1} for tenant {2}".format(documentId, namespace, tenant))
+        logger.warn("could not fetch {0} in namespace {1} for tenant {2}".format(documentId, namespace, tenant))
         return 404, '404 not found'
 
 def delete_document(user, public_hostname, tenant, namespace, document_id):
@@ -178,9 +197,14 @@ def delete_document(user, public_hostname, tenant, namespace, document_id):
     """
     MONGO_DB[make_collection_name(tenant, namespace)].remove(document_id, True)
     #TODO: check how many things Mongo actually deleted...
+    
+    logger.info("deleted document {0}".format(document_id))
+    # TODO Is 200 the correct return code?  Not 204?
+    
     return 200, None
 
 def drop_collection(user, public_hostname, tenant, namespace):
+    logger.info("dropped collection {0} for tenant {1}".format(namespace, tenant))
     MONGO_DB[make_collection_name(tenant, namespace)].drop()
 
 def create_history_document(user, public_hostname, tenant, namespace, document_id):
@@ -196,8 +220,12 @@ def create_history_document(user, public_hostname, tenant, namespace, document_i
         history_document_url = url_policy.construct_url(public_hostname, tenant, namespace + '_history', history_objectId)
         storage_json['@id'] = fix_up_url_for_storage('', public_hostname, history_document_url)
         MONGO_DB[history_collection_name].insert(storage_json)
+        
+        logger.info("created history document {0}".format(history_document_url))
+        
         return 201, history_document_url
     else:
+        logger.warn("create_history_document failed for id {0}".format(document_id))
         return 404, None
 
 def get_prior_versions(user, public_hostname, tenant, namespace, history):
@@ -205,6 +233,8 @@ def get_prior_versions(user, public_hostname, tenant, namespace, history):
     cursor = MONGO_DB[make_collection_name(tenant, namespace + '_history')].find(query)
     result = get_query_result(cursor, public_hostname)
     #logger.debug(result)
+    logger.debug("retrieved prior version with query {0}".format(query))
+    
     return 200, result
 
 def patch_document(user, revision, new_values, public_hostname, tenant, namespace, document_id):
@@ -237,6 +267,7 @@ def patch_document(user, revision, new_values, public_hostname, tenant, namespac
     try:
         mod_count = int(revision)
     except ValueError:
+        logger.warn("patch_document revision must be an integer: {0}".format(revision))
         return 400, 'revision must be an integer: %s' % revision
 
     status, history_document_id = create_history_document(user, public_hostname, tenant, namespace, document_id)
@@ -255,6 +286,7 @@ def patch_document(user, revision, new_values, public_hostname, tenant, namespac
             if last_err['n'] == 1:
                 mod_count = mod_count + 1
             else:
+                logger.warn("patch_document unexpected update count: {0}".format(last_err))
                 return 409, 'unexpected update count %s' % last_err
         for subject_url, subject_node in new_values.iteritems(): # have to patch one subject at a time, unfortunately
             if subject_node is None: continue
@@ -267,7 +299,9 @@ def patch_document(user, revision, new_values, public_hostname, tenant, namespac
             subject_sets = {'_lastModified' : get_timestamp(), '_lastModifiedBy': user}
             subject_unsets = {}
             for predicate, value_array in subject_node.iteritems():
-                if predicate in SYSTEM_PROPERTIES or predicate == '_id': return 400, 'cannot set system property'
+                if predicate in SYSTEM_PROPERTIES or predicate == '_id': 
+                    logger.warn("patch_document cannot set system property: {0}".format(predicate))
+                    return 400, 'cannot set system property'
                 if isinstance(value_array, (list, tuple)):
                     if len(value_array) > 0:
                         subject_sets['@graph.$.' + predicate_to_mongo(predicate)] = [storage_value_from_rdf_json(value, public_hostname, document_url) for value in value_array]
@@ -294,7 +328,9 @@ def patch_document(user, revision, new_values, public_hostname, tenant, namespac
                 subject_sets = {'_lastModified' :get_timestamp(), '_lastModifiedBy': user}
                 new_subject = {'@id': fix_up_url_for_storage(subject_url, public_hostname, document_url)}
                 for predicate, value_array in subject_node.iteritems():
-                    if predicate in SYSTEM_PROPERTIES or predicate == '_id': return 400, 'cannot set system property'
+                    if predicate in SYSTEM_PROPERTIES or predicate == '_id': 
+                        logger.warn("patch_document cannot set system property: {0}".format(predicate))
+                        return 400, 'cannot set system property'
                     if isinstance(value_array, (list, tuple)):
                         if len(value_array) > 0:
                             new_subject[predicate_to_mongo(predicate)] = [storage_value_from_rdf_json(value, public_hostname, document_url) for value in value_array]
@@ -305,9 +341,13 @@ def patch_document(user, revision, new_values, public_hostname, tenant, namespac
                 if last_err['n'] == 1:
                     mod_count = mod_count + 1
                 else:
+                    logger.warn("patch_document unexpected update count: {0}".format(last_err))
                     return 409, 'unexpected update count %s' % last_err
+                
+        logger.debug("Patched document {0}".format(document_id))
         return 200, None
     else:
+        logger.warn("patch_document failed to create history document: {0}".format(status))
         return status, 'failed to create history document'
 
 def make_objectid():
