@@ -21,6 +21,11 @@ DELETION_EVENT = TRS+'Deletion'
 CHECK_ACCESS_RIGHTS = os.environ.get('CHECK_ACCESS_RIGHTS') != 'False'
 UNCHANGED=object() # special value for recurse() args
 
+SAFE_IN_QUERY_STRING = "~:@!$'()*+,;=/" # exclude &
+
+def quote_query_string(s):
+    return urllib.quote(s, SAFE_IN_QUERY_STRING)
+
 class Domain_Logic(object):
     def __init__(self, environ, change_tracking=False):
         self.environ = environ
@@ -172,7 +177,7 @@ class Domain_Logic(object):
         else:
             resource_group = document.get_value(AC+'resource-group')
             if resource_group:
-                permissions_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-permissions') + ('?%s&%s' % (urllib.quote(str(resource_group)), urllib.quote(self.user)))
+                permissions_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-permissions') + ('?%s&%s' % (quote_query_string(str(resource_group)), quote_query_string(self.user)))
                 r = self.intra_system_get(permissions_url)
                 if r.status_code == 200:
                     return 200, int(r.text)
@@ -181,7 +186,7 @@ class Domain_Logic(object):
         return 200, 0
 
     def resource_groups(self):
-        resource_group_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-resource-groups') + ('?%s' % urllib.quote(self.user))
+        resource_group_url = url_policy.construct_url(self.request_hostname, self.tenant, 'ac-resource-groups') + ('?%s' % quote_query_string(self.user))
         r = self.intra_system_get(resource_group_url)
         if r.status_code == 200:
             return json.loads(r.text, object_hook=rdf_json.rdf_json_decoder)
@@ -594,12 +599,12 @@ class Domain_Logic(object):
     def add_inverse(self, document, property_predicate, membership_shortname, namespace=None):
         if not namespace:
             namespace = self.namespace
-        #FB query_string = urllib.quote(self.document_url())
+        #FB query_string = quote_query_string(self.document_url())
         #FB  GET http%3A//localhost%3A5001/xdo/webserver/deployments generates:
         #FB      ce_group: http://localhost:5001/sx/ce_for_deployment?http%3A//localhost%3A5001/xdo/webserver
         #FB  instead of:
         #FB      ce_group: http://localhost:5001/sx/ce_for_deployment?http%3A//localhost%3A5001/xdo/webserver_v1
-        query_string = urllib.quote(document.graph_url)
+        query_string = quote_query_string(document.graph_url)
         url = url_policy.construct_url(self.request_hostname, self.tenant, namespace, membership_shortname, query_string=query_string)
         document.set_value(property_predicate, URI(url))
 
