@@ -7,18 +7,11 @@ DEBUG_HTML = 'DEBUG_HTML' in os.environ and os.environ['DEBUG_HTML'] != 'False'
 
 class Rdf_json_to_html_converter(object):
 
-    def convert_graph_to_html(self, document, graph_id = None, g_indent=None):
-        if g_indent is None:
-            g_indent = '    '
+    def convert_graph_to_html(self, document, g_indent=''):
         g_subject_indent = g_indent + '    '
         g_predicate_header_indent = g_subject_indent + '    '
         g_predicate_indent = (g_predicate_header_indent if DEBUG_HTML else g_subject_indent) + '    '
-        if graph_id is None:
-            graph_id = 'rdfa-graph'
-        result = (g_indent + ('<div id = "%s" class="rdfa-graph" graph="%s"><br>\n' % (graph_id, document.graph_url) if DEBUG_HTML else '<div style="display: none;" graph="%s">\n' % document.graph_url))
-        if DEBUG_HTML:
-            result += g_subject_indent + '<h1>Graph: <a href="%s">%s</a></h1>\n' % (document.graph_url,document.graph_url)
-        graph_count = 0
+        result = ''
         def html_element(predicate, python_value, indent):
             property_string = 'property="%s" ' % predicate if predicate else ''
             class_string = 'class="rdfa-triple" ' if DEBUG_HTML else ''
@@ -56,12 +49,6 @@ class Rdf_json_to_html_converter(object):
             elif isinstance(python_value, datetime.datetime):
                 rslt = predicate_indent + \
                     '<span %s%sdatatype="%s">%s</span><br>\n' % (class_string, property_string, XSD+'dateTime', python_value.isoformat())
-            elif hasattr(python_value, 'keys') and python_value.get('type') == 'graph': #used to return versions
-                rslt = predicate_indent + \
-                    '<span %sdatatype = "graph" property="%s" %s>{\n' % (class_string)
-                rslt = self.convert_graph_to_html(python_value['value'], graph_id + '-' + str(graph_count), predicate_indent + '    ')
-                graph_count = graph_count+1
-                rslt = predicate_indent + '}</span><br>\n'
             elif python_value is None: # TODO: Review with Martin, figure out proper way to handle None value
                 rslt = predicate_indent + \
                     '<span %s%s%s>%s</span><br>\n' % (class_string, property_string, "BAD VALUE: NULL!")
@@ -81,7 +68,6 @@ class Rdf_json_to_html_converter(object):
                     result += g_predicate_header_indent + '<span class="rdfa-predicate"><b>%s:&nbsp;&nbsp;</b></span>\n' % predicate
                 result += html_element(predicate, value_array, g_indent)
             result += g_indent + '    </div>\n'
-        result += g_indent + '</div>'
         return result
 
     def convert_rdf_json_to_html(self, document, app_js_name=None):

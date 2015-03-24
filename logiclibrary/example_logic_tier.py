@@ -468,12 +468,6 @@ class Domain_Logic(object):
     def complete_request_document(self, document):
         self.complete_result_document(document) # will add any calculated properties, including owned containers.
         document_url = document.graph_url #self.document_url()
-        if self.extra_path_segments == None: # a simple document URL with no extra path segments
-            document.add_triples(document_url, CE+'allVersions', URI('/'.join((document_url, 'allVersions'))))
-        else:
-            if len(self.extra_path_segments) == 1 and self.extra_path_segments[0] == 'allVersions' and not self.query_string: # client wants history collection
-                status, document = self.create_all_versions_container(document)
-                return status, document
         expected_url = self.request_url()
         if document.graph_url != expected_url: #usually a bad thing, unless it's an owned container that was being asked for
             owned_container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id, self.extra_path_segments)
@@ -606,30 +600,6 @@ class Domain_Logic(object):
         query_string = quote_query_string(document.graph_url)
         url = url_policy.construct_url(self.request_hostname, self.tenant, namespace, membership_shortname, query_string=query_string)
         document.set_value(property_predicate, URI(url))
-
-    def create_all_versions_container(self, document):
-        history = document.get_values(HISTORY)
-        status, query_result = operation_primitives.get_prior_versions(self.user, self.request_hostname, self.namespace, history)
-        if status == 200:
-            request_url = self.request_url() # the url of the allVersions collection
-            result_document = rdf_json.RDF_JSON_Document ({}, request_url)
-            result_document[request_url] = {
-                '#id' : URI('all versions'),
-                RDF+'type': URI(LDP+'DirectContainer'),
-                LDP+'membershipResource' : URI(document.graph_url),
-                LDP+'isMemberOfRelation' : URI(CE+'versionOf')
-                }
-            result_document.add_triples(document.graph_url, CE+'versionOf', URI(document.graph_url))
-            result_document.add_triples(document.graph_url, CE+'graph', [{'type': 'graph', 'value': document}])
-            for version in query_result:
-                result_document.add_triples(version.graph_url, CE+'versionOf', URI(document.graph_url))
-                result_document.add_triples(version.graph_url, CE+'graph', [{'type': 'graph', 'value': version}])
-                document_url = version.get_value(CE+'versionOf')
-                del version[version.graph_url]
-                version.default_subject_url = document_url
-            return 200, result_document
-        else:
-            return status, query_result
 
     def generate_change_event(self, event_type, resource_uri):
         document_namespace = self.tenant + '/' + self.namespace #Todo: - do this better
