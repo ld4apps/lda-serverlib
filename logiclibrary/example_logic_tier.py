@@ -208,6 +208,7 @@ class Domain_Logic(object):
 
     def prim_get_document(self):
         if not self.document_id and 'rdfs_label=' in self.query_string:
+            #TODO: move this to a separate method and call it from get_container() instead of from here
             query_parms=urlparse.parse_qs(self.query_string)
             query = {'_any': {RDFS+'label' : query_parms['rdfs_label'][0]}}
             status, result = operation_primitives.execute_query(self.user, query, self.request_hostname, self.tenant, self.namespace)
@@ -614,6 +615,11 @@ class Domain_Logic(object):
         converter = rdf_json.RDF_json_to_compact_json_converter(self.namespace_mappings())
         compact_json = converter.convert_to_compact_json(document)
         return compact_json
+
+    def convert_compact_json_to_rdf_json(self, document):
+        converter = rdf_json.Compact_json_to_rdf_json_converter(self.namespace_mappings())
+        result = converter.convert_to_rdf_json(document)
+        return result
 
     def convert_rdf_json_to_html(self, document):
         from example_rdf_json_to_html_converter import Rdf_json_to_html_converter

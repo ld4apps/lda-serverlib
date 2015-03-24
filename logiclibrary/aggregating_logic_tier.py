@@ -6,10 +6,7 @@ class Domain_Logic(object):
         self.logic_tier = None
 
     def create_logic_tier(self):
-        all_parts = self.environ['PATH_INFO'].split('/')
-        if (self.logic_tier):
-            raise ValueError('cannot use a domain_logic instance twice')
-        else: 
+        if not self.logic_tier:
             raise ValueError('must override')
         return self.logic_tier
 
@@ -32,10 +29,11 @@ class Domain_Logic(object):
     def execute_action(self, query):
         return self.create_logic_tier().execute_action(query)
 
+    def convert_compact_json_to_rdf_json(self, document):
+        return self.create_logic_tier().convert_compact_json_to_rdf_json(document)    
+
     def convert_rdf_json_to_compact_json(self, document):
-        # second call - logic_tier already set up
-        return self.logic_tier.convert_rdf_json_to_compact_json(document)    
+        return self.create_logic_tier().convert_rdf_json_to_compact_json(document)    
 
     def convert_rdf_json_to_html(self, document):
-        # second call - logic_tier already set up
-        return self.logic_tier.convert_rdf_json_to_html(document)  
+        return self.create_logic_tier().convert_rdf_json_to_html(document)  

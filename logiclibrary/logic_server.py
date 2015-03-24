@@ -26,7 +26,7 @@ def post_document(environ, start_response):
     domain_logic = Domain_Logic(environ)
     post_reason = environ.get('HTTP_CE_POST_REASON')
     if not post_reason:
-        post_reason = 'ce-action' # worst case - neither safe nor idempotent
+        post_reason = 'ce-create'
     else:
         post_reason = post_reason.lower()
     if post_reason == 'ce-create' or post_reason == 'ce-transform' or post_reason == 'ce-action':
@@ -41,10 +41,13 @@ def post_document(environ, start_response):
                 document = json.loads(request_body, object_hook = rdf_json.rdf_json_decoder)
             except:
                 return make_json_response(400, [], [('', "No JSON object could be decoded from: '%s'" % request_body)], 'application/json', start_response)
+            if content_type == 'application/json':
+                document = domain_logic.convert_compact_json_to_rdf_json(document)
         method = 'create_document' if post_reason == 'ce-create' else 'execute_query' if post_reason == 'ce-transform' else 'execute_action'
         status, headers, body = getattr(domain_logic, method)(document)
         add_standard_headers(environ, headers)
         if status == (201 if post_reason == 'ce-create' else 200):
+            #TODO: if Accept header is application/json, convert body to compact_json
             return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
         elif status == 403:
             return send_auth_challenge(environ, start_response)
@@ -117,15 +120,18 @@ def delete_document(environ, start_response):
 def patch_document(environ, start_response):
     domain_logic = Domain_Logic(environ)
     content_type = environ['CONTENT_TYPE'].split(';')[0]
-    if content_type == 'application/rdf+json+ce':
+    if content_type == 'application/rdf+json+ce' or content_type == 'application/json':
         content_length = int(environ['CONTENT_LENGTH'])
         request_body = environ['wsgi.input'].read(content_length)
         document = json.loads(request_body, object_hook = rdf_json.rdf_json_decoder)
+        if content_type == 'application/json':
+            document = domain_logic.convert_compact_json_to_rdf_json(document)
         status, headers, body = domain_logic.patch_document(document)
         add_standard_headers(environ, headers)
         if status == 200:
             if not header_set('Content-Location', headers):
                 headers.append(('Content-Location', get_content_location(environ, body)))
+            #TODO: if Accept header is application/json, convert body to compact_json
             return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
         elif status == 403:
             return send_auth_challenge(environ, start_response)
@@ -133,18 +139,21 @@ def patch_document(environ, start_response):
             return make_json_response(status, headers, body, 'application/json', start_response)
     else:
         start_response('400 Bad Request', [])
-        return ['content type of patch must be application/rdf+json+ce, not %s' % content_type]
+        return ['content type of patch must be application/rdf+json+ce or application/json, not %s' % content_type]
 
 def put_document(environ, start_response):
     domain_logic = Domain_Logic(environ)
     content_type = environ['CONTENT_TYPE'].split(';')[0]
-    if content_type == 'application/rdf+json+ce':
+    if content_type == 'application/rdf+json+ce' or content_type == 'application/json':
         content_length = int(environ['CONTENT_LENGTH'])
         request_body = environ['wsgi.input'].read(content_length)
         document = json.loads(request_body, object_hook = rdf_json.rdf_json_decoder)
+        if content_type == 'application/json':
+            document = domain_logic.convert_compact_json_to_rdf_json(document)
         status, headers, body = domain_logic.put_document(document)
         add_standard_headers(environ, headers)
         if status == 201:
+            #TODO: if Accept header is application/json, convert body to compact_json
             return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
         elif status == 403:
             return send_auth_challenge(environ, start_response)
@@ -152,7 +161,7 @@ def put_document(environ, start_response):
             return make_json_response(status, headers, body, 'application/json', start_response)
     else:
         start_response('400 Bad Request', [])
-        return ['content type of put must be application/rdf+json+ce, not %s' % content_type]
+        return ['content type of put must be application/rdf+json+ce or application/json, not %s' % content_type]
 
 def explain_options(environ, start_response):
     headers = []
