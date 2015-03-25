@@ -47,7 +47,13 @@ def post_document(environ, start_response):
         status, headers, body = getattr(domain_logic, method)(document)
         add_standard_headers(environ, headers)
         if status == (201 if post_reason == 'ce-create' else 200):
-            #TODO: if Accept header is application/json, convert body to compact_json
+            #TODO: honour Accept header if it is set
+            if content_type == 'application/json':
+                if not hasattr(body, 'graph_url'): # not an rdf_json document - probably an error condition
+                    body = json.dumps(body, cls=rdf_json.RDF_JSON_Encoder)
+                else:
+                    body = domain_logic.convert_rdf_json_to_compact_json(body)
+                return make_json_response(status, headers, body, content_type, start_response)
             return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
         elif status == 403:
             return send_auth_challenge(environ, start_response)
@@ -131,8 +137,13 @@ def patch_document(environ, start_response):
         if status == 200:
             if not header_set('Content-Location', headers):
                 headers.append(('Content-Location', get_content_location(environ, body)))
-            #TODO: if Accept header is application/json, convert body to compact_json
-            return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
+            #TODO: honour Accept header if it is set
+            if content_type == 'application/json':
+                if not hasattr(body, 'graph_url'): # not an rdf_json document - probably an error condition
+                    body = json.dumps(body, cls=rdf_json.RDF_JSON_Encoder)
+                else:
+                    body = domain_logic.convert_rdf_json_to_compact_json(body)
+            return make_json_response(status, headers, body, content_type, start_response)
         elif status == 403:
             return send_auth_challenge(environ, start_response)
         else:
@@ -153,7 +164,13 @@ def put_document(environ, start_response):
         status, headers, body = domain_logic.put_document(document)
         add_standard_headers(environ, headers)
         if status == 201:
-            #TODO: if Accept header is application/json, convert body to compact_json
+            #TODO: honour Accept header if it is set
+            if content_type == 'application/json':
+                if not hasattr(body, 'graph_url'): # not an rdf_json document - probably an error condition
+                    body = json.dumps(body, cls=rdf_json.RDF_JSON_Encoder)
+                else:
+                    body = domain_logic.convert_rdf_json_to_compact_json(body)
+                return make_json_response(status, headers, body, content_type, start_response)
             return make_json_response(status, headers, body, 'application/rdf+json+ce', start_response)
         elif status == 403:
             return send_auth_challenge(environ, start_response)
