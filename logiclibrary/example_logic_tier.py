@@ -223,10 +223,17 @@ class Domain_Logic(object):
                     return 200, document
                 elif len(result) > 1:
                     get_all = query_parms.get('all')
-                    if get_all and (get_all[0] == 'true' or get_all[0] == '1'):
-                        return 200, result
+                    if get_all and (get_all[0] == 'true'):
+                        container_url = self.request_url()
+                        container_predicates = {
+                            RDF+'type': URI(LDP+'BasicContainer'),
+                            LDP+'contains': [URI(resource.default_subject()) for resource in result]
+                        }
+                        document = rdf_json.RDF_JSON_Document({container_url: container_predicates}, container_url)
+                        self.add_member_detail(document, result)
+                        return 200, document
                     logger.info('Multiple query matches for url : %s query: %s status: %s', self.request_url(), query, status)                   
-                    return 409, ['Duplicate label, use ?all=1 to retrieve list of resources']
+                    return 409, ['Duplicate label, use ?all=true to retrieve the list of resources']
             logger.info('Failed query for url: %s query: %s status: %s', self.request_url(), query, status)                   
             return 404, ['Not found']
         return operation_primitives.get_document(self.user, self.request_hostname, self.tenant, self.namespace, self.document_id)
