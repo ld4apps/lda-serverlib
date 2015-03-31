@@ -538,13 +538,17 @@ class Domain_Logic(object):
         self.add_container(document, container_url, membership_resource, membership_predicate, member_is_object, None, None)
         return document
 
-    def container_from_membership_resource_in_query_string(self, membership_predicate, member_is_object=False):
+    def container_from_membership_resource_in_query_string(self, membership_predicate, member_is_object=False, membership_resource_key=None):
         if self.query_string.endswith('?non-member-properties'):
             qs = self.query_string[:-22]
         else:
             qs = self.query_string
         container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id, self.extra_path_segments, qs)
-        membership_resource = self.absolute_url(urllib.unquote(qs))
+        if membership_resource_key:
+            query_parms=urlparse.parse_qs(qs)
+            membership_resource = self.absolute_url(urllib.unquote(query_parms[membership_resource_key][0]))
+        else:
+            membership_resource = self.absolute_url(urllib.unquote(qs))
         document = self.create_container(container_url, membership_resource, membership_predicate, member_is_object)
         status, document = self.complete_result_document(document)
         return status, [], document
