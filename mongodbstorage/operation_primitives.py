@@ -122,6 +122,8 @@ def create_document(user, document, public_hostname, tenant, namespace, resource
     """
     if resource_id == None:
         resource_id = make_objectid()
+    elif resource_id[-1] == '/':
+        resource_id = resource_id + make_objectid()
     document_url = url_policy.construct_url(public_hostname, tenant, namespace, resource_id)
     subject_array = make_subject_array(document, public_hostname, document_url)
     if subject_array is None:
