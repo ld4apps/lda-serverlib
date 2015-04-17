@@ -191,7 +191,7 @@ def delete_document(user, public_hostname, tenant, namespace, document_id):
     """
     Delete the document specified by 'public_hostname', 'tenant', 'namespace', and 'document_id'.
 
-    If the document doesn't exist, this fuction is a NO-OP.
+    If the document doesn't exist, this function is a NO-OP.
 
     Return:
         Success: (200, None)

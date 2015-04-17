@@ -39,7 +39,7 @@ def fix_up_url_for_storage(url, public_hostname, path_url):
             elif abs_url.startswith(public_https_prefix):
                 return storage_relative_url(None, abs_url[len(public_https_prefix):]) #make it storage-relative
             else: #oops - the hostname in the path_url must be different from public_hostname
-                raise ValueError('#oops - the hostname in the path_url must be different from public_hostname. path_url: %s  url: %s  public_hostname: ' % (path_url, url, public_hostname))
+                raise ValueError('#oops - the hostname in the path_url must be different from public_hostname. path_url: %s  url: %s  public_hostname: %s' % (path_url, url, public_hostname))
         else: #must be an absolute http url on a different host or an url with a scheme other than http(s)
             return url
 
