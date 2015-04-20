@@ -237,6 +237,7 @@ def convert_to_requested_format(document, headers, environ): #TODO: pass in req,
     if best_match == 'application/json':
         body = json.dumps(document)
     else:
+        graph_url = document.get('_subject')
         document = domain_logic.convert_compact_json_to_rdf_json(document) #TODO: doesn't work for containers - ld_contains contents is not being converted
         if best_match == 'application/rdf+json+ce':
             body = json.dumps(document, cls=rdf_json.RDF_JSON_Encoder)
@@ -247,6 +248,7 @@ def convert_to_requested_format(document, headers, environ): #TODO: pass in req,
             graph = rdfjson_to_graph(rdf_json.normalize(document))
             body = serialize_graph(graph, best_match, None) #TODO: should we use wfile instead of string return value?
         elif best_match == 'text/html':
+            document = rdf_json.RDF_JSON_Document(document, graph_url)
             body = domain_logic.convert_rdf_json_to_html(document)
     if not header_set('Content-Type', headers):
         headers.append(('Content-Type', best_match))
