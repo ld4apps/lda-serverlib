@@ -41,7 +41,7 @@ def post_document(environ, start_response):
                 document = json.loads(request_body, object_hook = rdf_json.rdf_json_decoder)
             except:
                 return make_json_response(400, [], [('', "No JSON object could be decoded from: '%s'" % request_body)], 'application/json', start_response)
-            if content_type == 'application/json':
+            if content_type == 'application/json' and post_reason == 'ce-create':
                 document = domain_logic.convert_compact_json_to_rdf_json(document)
         method = 'create_document' if post_reason == 'ce-create' else 'execute_query' if post_reason == 'ce-transform' else 'execute_action'
         status, headers, body = getattr(domain_logic, method)(document)
