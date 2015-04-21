@@ -73,7 +73,7 @@ def storage_value_from_rdf_json(rdf_json, public_hostname, path_url):
         if isinstance(rdf_json, URI):
             return {'type':'uri','value': fix_up_url_for_storage(rdf_json.uri_string, public_hostname, path_url)}
         elif isinstance(rdf_json, BNode):
-            return {'type':'bnode','value':rdf_json.uri_string} 
+            return {'type':'bnode','value':rdf_json.bnode_string} 
         else:
             return rdf_json # hopefully it's a string, a number or a boolean, otherwise it won't work    
             
