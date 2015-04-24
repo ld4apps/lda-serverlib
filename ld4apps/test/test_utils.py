@@ -1,7 +1,7 @@
 import requests, json, jwt
-from rdf_json import RDF_JSON_Encoder, RDF_JSON_Document, rdf_json_decoder
-from base_constants import ADMIN_USER
-from base_constants import RDF
+from ld4apps.rdf_json import RDF_JSON_Encoder, RDF_JSON_Document, rdf_json_decoder
+from ld4apps.base_constants import ADMIN_USER
+from ld4apps.base_constants import RDF
 
 SHARED_SECRET = 'our little secret'
 
