@@ -1,3 +1,17 @@
+import jwt
+
+SIGNATURE_PUBLIC_KEY = 'our little secret'
+
+def encode_jwt(claims, alg='HS256'):
+    return jwt.encode(claims, SIGNATURE_PUBLIC_KEY, alg)
+                                       
+def decode_jwt(signature, verify_expiration=True):
+    try:
+        return jwt.decode(signature, SIGNATURE_PUBLIC_KEY, verify_expiration=verify_expiration)
+    except jwt.ExpiredSignature:
+        return None
+    
+'''
 import base64, os
 
 from Crypto.Hash import SHA
@@ -5,7 +19,7 @@ from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto import Random
 from Crypto.Signature import PKCS1_PSS
-import jwt
+
     
 private_key = None
 public_key = None
@@ -59,17 +73,6 @@ def decrypt(encrypted_string, key=None):
     pad = ord(plain_text[-1])
     return plain_text[:-pad]
 
-SIGNATURE_PUBLIC_KEY = 'our little secret'
-
-def encode_jwt(claims, alg='HS256'):
-    return jwt.encode(claims, SIGNATURE_PUBLIC_KEY, alg)
-                                       
-def decode_jwt(signature, verify_expiration=True):
-    try:
-        return jwt.decode(signature, SIGNATURE_PUBLIC_KEY, verify_expiration=verify_expiration)
-    except jwt.ExpiredSignature:
-        return None
-    
 def generate_new_keys():
     rng = Random.new().read
     private_key = RSA.generate(1024, rng)
@@ -112,3 +115,4 @@ def read_key_files():
         pass # print 'could not open key file'
         
 read_key_files()
+'''

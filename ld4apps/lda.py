@@ -17,7 +17,7 @@ Example Usage:
     os.environ['MONGODB_DB_PORT'] = '27017'
     os.environ['APP_NAME'] = 'teststore'
 
-    import lda
+    from ld4apps import lda
     foo_container_environ = {'HTTP_HOST': 'localhost', 'PATH_INFO': '/tst/foo', 'QUERY_STRING': ''}
     new_foo_resource = {'rdfs_label': 'my foo', 'rdf_type': 'http://example.org#Foo'}
     body, status, headers = lda.create_document(foo_container_environ, new_foo_resource, 'in_foo_container')

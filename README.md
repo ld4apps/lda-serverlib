@@ -1,4 +1,4 @@
 lda-serverlib
 =============
 
-python library for Linked Data for Applications (LDA)
+Python library for Linked Data for Applications (LDA). See http://ld4apps.github.io/.

@@ -169,7 +169,7 @@ def query_value_to_storage(value, public_hostname, path_url):
     return storage_value_from_rdf_json(value, public_hostname, path_url)
 
 def query_predicate_to_storage(predicate, value_array, public_hostname, path_url):
-    if predicate == '$or':
+    if predicate == '$or' or predicate == '$and':
         op1 = value_array[0].popitem()
         op2 = value_array[1].popitem()
         predicate1 = op1[0]

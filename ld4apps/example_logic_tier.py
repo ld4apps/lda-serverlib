@@ -475,7 +475,6 @@ class Domain_Logic(object):
 
     def complete_request_document(self, document):
         self.complete_result_document(document) # will add any calculated properties, including owned containers.
-        document_url = document.graph_url #self.document_url()
         expected_url = self.request_url()
         if document.graph_url != expected_url: #usually a bad thing, unless it's an owned container that was being asked for
             owned_container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace, self.document_id, self.extra_path_segments)
