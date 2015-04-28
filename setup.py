@@ -1,13 +1,15 @@
 from setuptools import setup
 
+description = open('README.rst').read()
+
 setup(
-    name='ld4apps',
-    version='0.9.2',
+    name='LD4Apps',
+    version='0.9.3',
     description='Linked Data for Applications Server Library',
-    long_description='Python library for Linked Data for Applications (LDA). See http://ld4apps.github.io/.',
+    long_description=description,
     author='LD4Apps Team',
     author_email='frankb@ca.ibm.com',
-    url='http://pypi.python.org/pypi/ld4apps/',
+    url='https://github.com/ld4apps/lda-serverlib/tree/ld4apps',
     packages=['ld4apps', 'ld4apps.mongodbstorage', 'ld4apps.test'],
     install_requires=['requests==2.2.1',
                       'python-dateutil==2.2',
