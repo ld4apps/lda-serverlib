@@ -60,7 +60,7 @@ class Rdf_json_to_html_converter(object):
                 result += g_subject_indent + '<div class="rdfa-description" resource="%s" style="COLOR: red;">\n' % subject
             else:
                 result += g_subject_indent + (('<div class="rdfa-description" resource="%s">\n' % subject) if DEBUG_HTML else \
-                                     '<div resource="%s">\n' % subject)
+                                     '<div style="display: none;" resource="%s">\n' % subject)
             if DEBUG_HTML:
                 result += g_subject_indent + '<h2>Subject: <a class = "rdfa-subject" href="%s">%s</a></h2>\n' % (subject, subject)
             for predicate, value_array in rdf_json_subject_node.iteritems():
@@ -73,7 +73,7 @@ class Rdf_json_to_html_converter(object):
     def convert_rdf_json_to_html(self, document, app_js_name=None):
         if not hasattr(document, 'graph_url'): # not an rdf_json document - probably an error condition
             return json.dumps(document, cls=RDF_JSON_Encoder)
-        
+
         if app_js_name:
             application_url = app_js_name
         elif 'APP_JS_NAME' in os.environ:
