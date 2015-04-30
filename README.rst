@@ -33,7 +33,7 @@ At this point, MonoDB should be running and listening on its default host and po
 To configure LDA with the MongoDB server, 3 environment variables also need to be set:
     
 1. MONGODB_DB_HOST - hostname of the MONGODB server to use
-2. MONGODB_DB_POST - the MONGDOB server port
+2. MONGODB_DB_PORT - the MONGDOB server port
 3. APP_NAME - the name of you application, which is used as the DB name where the resources will be stored
 
 Example
@@ -51,8 +51,10 @@ You can create a Linked-Data resource using the *ld4apps.lda* module like this:
     >>> foo_container_environ = {'HTTP_HOST': 'localhost', 'PATH_INFO': '/tst/foo', 'QUERY_STRING': ''}
     >>> new_foo_resource = {'rdfs_label': 'my foo', 'rdf_type': 'http://example.org#Foo'}
     >>> body, status, headers = lda.create_document(foo_container_environ, new_foo_resource, 'in_foo_container')
+    INFO:ld4apps.mongodbstorage.operation_primitives:created document http://localhost/tst/foo/4.1
     >>> status
     201
+    >>> import json
     >>> print json.dumps(body, indent=4)
     {
         "ce_owner": "http://localhost/unknown_user/da36bb01-0d1c-438a-9d00-9940085aae20",
@@ -68,8 +70,8 @@ You can create a Linked-Data resource using the *ld4apps.lda* module like this:
         "rdf_type": "http://example.org#Foo"
     }
 
-An example using ld4apps along with `Flask <http://flask.pocoo.org/>`_ to implement a simple, but complete, web-server 
-can be found here: https://github.com/ld4apps/lda-examples/tree/master/todo-flask.
+An example using ld4apps along with `Flask <http://flask.pocoo.org/>`_ to implement a simple "todo list" web-server 
+can be found here: https://github.com/ld4apps/lda-examples/tree/ld4apps/todo-flask.
 
 Documentation
 -------------

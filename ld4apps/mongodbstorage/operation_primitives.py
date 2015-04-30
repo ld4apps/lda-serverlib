@@ -28,22 +28,28 @@ def get_timestamp():
     """Get the current time
     @return: datetime.datetime
     """
-    
     #return datetime.utcnow()
     return datetime.now(tz.tzutc())
 
+def get_mongo_db():
+    if 'MONGODB_DB_URI' in os.environ:
+        client = MongoClient(os.environ['MONGODB_DB_URI'], tz_aware=True)
+        db = client.get_default_database()
+    else:
+        client = MongoClient(os.environ['MONGODB_DB_HOST'], int(os.environ['MONGODB_DB_PORT']), tz_aware=True)
+        db_name = os.environ['MONGODB_DB_NAME'] if 'MONGODB_DB_NAME' in os.environ else os.environ['APP_NAME']
+        db = client[db_name]
+        if 'MONGODB_DB_USERNAME' in os.environ:
+            db.authenticate(os.environ['MONGODB_DB_USERNAME'], os.environ['MONGODB_DB_PASSWORD'])
+    return db
+    
 try:
-    MONGO_CLIENT = MongoClient(os.environ['MONGODB_DB_HOST'], int(os.environ['MONGODB_DB_PORT']), tz_aware=True)
+    MONGO_DB = get_mongo_db()
 except ConnectionFailure, e:
     # On connection error sleep for 10 seconds and try again, Mongo might still be coming up.
     logger.info("Sleeping for 10 seconds hoping that MongoDB starts accepting connections")
     time.sleep(10)
-    MONGO_CLIENT = MongoClient(os.environ['MONGODB_DB_HOST'], int(os.environ['MONGODB_DB_PORT']), tz_aware=True)
-    
-MONGODB_DB_NAME = os.environ['MONGODB_DB_NAME'] if 'MONGODB_DB_NAME' in os.environ else os.environ['APP_NAME']
-MONGO_DB = MONGO_CLIENT[MONGODB_DB_NAME]
-if 'MONGODB_DB_USERNAME' in os.environ:
-    MONGO_DB.authenticate(os.environ['MONGODB_DB_USERNAME'], os.environ['MONGODB_DB_PASSWORD'])
+    MONGO_DB = get_mongo_db()
 
 next_id = 1
 next_history_id = 1

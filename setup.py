@@ -4,7 +4,7 @@ description = open('README.rst').read()
 
 setup(
     name='LD4Apps',
-    version='0.9.3',
+    version='0.9.4',
     description='Linked Data for Applications Server Library',
     long_description=description,
     author='LD4Apps Team',
