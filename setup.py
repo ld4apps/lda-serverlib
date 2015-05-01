@@ -4,7 +4,7 @@ description = open('README.rst').read()
 
 setup(
     name='LD4Apps',
-    version='0.9.4',
+    version='0.9.5',
     description='Linked Data for Applications Server Library',
     long_description=description,
     author='LD4Apps Team',
@@ -20,7 +20,7 @@ setup(
                       'isodate==0.5.0',
                       'rdflib==4.2.0',
                       'rdflib-jsonld==0.2',
-                      'werkzeug==0.9.4'
+                      'werkzeug==0.9.5'
                       ],
     license='Apache Software License',
     platforms='any'
