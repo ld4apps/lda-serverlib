@@ -283,9 +283,10 @@ class Domain_Logic(object):
         container_url = url_policy.construct_url(self.request_hostname, self.tenant, self.namespace)
         container_properties = { RDF+'type': URI(LDP+'DirectContainer'),
                                  LDP+'membershipResource': URI(container_url),
-                                 LDP+'hasMemberRelation': URI(LDP+'member'),
-                                 CE+'owner': URI(ADMIN_USER),
-                                 AC+'resource-group': self.default_resource_group() }
+                                 LDP+'hasMemberRelation': URI(LDP+'member') }
+        if CHECK_ACCESS_RIGHTS:
+            container_properties[CE+'owner'] = URI(ADMIN_USER)
+            container_properties[AC+'resource-group'] = self.default_resource_group()            
         document = rdf_json.RDF_JSON_Document({ container_url : container_properties }, container_url)
         if self.query_string.endswith('non-member-properties'):
             document.default_subject_url = document.graph_url
@@ -521,14 +522,15 @@ class Domain_Logic(object):
         return URI(url_policy.construct_url(self.request_hostname, self.tenant)) # default is the root resource (i.e., '/')
 
     def add_container(self, document, container_url, membership_resource, membership_predicate, member_is_object=False, container_resource_group=None, container_owner=None) :
-        if container_resource_group is None:
+        if container_resource_group is None and CHECK_ACCESS_RIGHTS:
             container_resource_group = self.default_resource_group()
         document[container_url] = {
                 RDF+'type': URI((LDP+'DirectContainer')),
                 LDP+'membershipResource' : URI(membership_resource),
-                (LDP+'hasMemberRelation' if member_is_object else LDP+'isMemberOfRelation') : URI(membership_predicate),
-                AC+'resource-group' : container_resource_group
+                (LDP+'hasMemberRelation' if member_is_object else LDP+'isMemberOfRelation') : URI(membership_predicate)
                 }
+        if container_resource_group is not None:
+            document[container_url][AC+'resource-group'] = container_resource_group
         if container_owner is not None:
             document[container_url][CE+'owner'] = container_owner
 

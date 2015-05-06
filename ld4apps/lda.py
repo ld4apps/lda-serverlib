@@ -234,6 +234,13 @@ def convert_to_requested_format(document, headers, environ): #TODO: pass in req,
                                         'text/turtle',
                                         'application/x-turtle',
                                         'application/ld+json'])
+    #revision = document.get('ce_revision')
+    #if revision:
+    #    if not header_set('ETag', headers):
+    #        import hashlib
+    #        m = hashlib.md5()
+    #        m.update(document['_subject'] + revision)
+    #        headers.append(('ETag', m.hexdigest()))
     if best_match == 'application/json':
         body = json.dumps(document)
     else:

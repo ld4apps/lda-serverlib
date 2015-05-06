@@ -1,11 +1,12 @@
 import urlparse
 import datetime
+import os
 from ld4apps.rdf_json import RDF_JSON_Document
 from ld4apps.rdf_json import rdf_json_value_struct
 from ld4apps.rdf_json import URI
 from ld4apps.rdf_json import BNode
 from dateutil.parser import parse as to_date
-from ld4apps.base_constants import XSD, RDF, CE, DC
+from ld4apps.base_constants import XSD, RDF, CE, DC, AC
 
 STORAGE_PREFIX = 'urn:ce:'
 
@@ -17,6 +18,9 @@ CREATOR = DC+'creator'
 CREATED = DC+'created'
 #TODO: Think about whether we should use our own CE namespace (instead of DC) for CREATOR and CREATED properties, so that
 #      we don't ever interfere with (wipe out) user-defined values.
+
+CHECK_ACCESS_RIGHTS = os.environ.get('CHECK_ACCESS_RIGHTS') != 'False'
+SUPPRESS_MODIFICATION_METADATA = os.environ.get('SUPPRESS_MODIFICATION_METADATA') == 'True'
 
 def storage_relative_url(tenant, relative_url):
     return STORAGE_PREFIX + relative_url
@@ -123,6 +127,8 @@ def rdf_json_from_storage (storage_json, public_hostname):
                     pass
                 else:
                     predicate = restore_predicate_from_storage(predicate)
+                    if not CHECK_ACCESS_RIGHTS and (predicate == CE+'owner' or predicate == AC+'resource-group'):
+                        continue
                     if isinstance(storage_value_array, (list, tuple)):
                         rdf_subject[predicate] = [rdf_json_value_from_storage (item, public_hostname) for item in storage_value_array]
                     else:
@@ -141,17 +147,18 @@ def rdf_json_from_storage (storage_json, public_hostname):
             rdf_json[graph_subject_url] = {}
     if '_modificationCount' in storage_json:
         rdf_json[graph_subject_url][REVISION] = str(storage_json['_modificationCount'])
-    if '_lastModified' in storage_json:
-        rdf_json[graph_subject_url][LASTMODIFIED] = storage_json['_lastModified']
-    if '_lastModifiedBy' in storage_json:
-        rdf_json[graph_subject_url][LASTMODIFIEDBY] = uri_string_from_storage(storage_json['_lastModifiedBy'], public_hostname)
-    if '_created' in storage_json:
-        rdf_json[graph_subject_url][CREATED] = storage_json['_created']
-    if '_createdBy' in storage_json:
-        rdf_json[graph_subject_url][CREATOR] = uri_string_from_storage(storage_json['_createdBy'], public_hostname)
-    if '_history' in storage_json: 
-        history = storage_json['_history']
-        rdf_json[graph_subject_url][CE+'history'] = [URI(version) for version in history]
+    if not SUPPRESS_MODIFICATION_METADATA:
+        if '_lastModified' in storage_json:
+            rdf_json[graph_subject_url][LASTMODIFIED] = storage_json['_lastModified']
+        if '_lastModifiedBy' in storage_json:
+            rdf_json[graph_subject_url][LASTMODIFIEDBY] = uri_string_from_storage(storage_json['_lastModifiedBy'], public_hostname)
+        if '_created' in storage_json:
+            rdf_json[graph_subject_url][CREATED] = storage_json['_created']
+        if '_createdBy' in storage_json:
+            rdf_json[graph_subject_url][CREATOR] = uri_string_from_storage(storage_json['_createdBy'], public_hostname)
+        if '_history' in storage_json: 
+            history = storage_json['_history']
+            rdf_json[graph_subject_url][CE+'history'] = [URI(version) for version in history]
     return RDF_JSON_Document(rdf_json, version_url or graph_subject_url)
     
 def predicate_to_mongo(predicate):
