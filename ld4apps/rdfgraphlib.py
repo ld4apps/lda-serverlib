@@ -11,11 +11,13 @@ XSD_DOUBLE = 'http://www.w3.org/2001/XMLSchema#double'
 CONTENT_RDF_XML = 'application/rdf+xml'
 CONTENT_TEXT_TURTLE = 'text/turtle'
 CONTENT_APPLICATION_X_TURTLE = 'application/x-turtle'
+CONTENT_APPLICATION_N_TRIPLES = 'application/n-triples'
 CONTENT_LD_JSON = 'application/ld+json'
 
 RDF_SERIALIZE_MAP = {CONTENT_RDF_XML : 'xml',
                      CONTENT_TEXT_TURTLE : 'turtle',
                      CONTENT_APPLICATION_X_TURTLE : 'turtle',
+                     CONTENT_APPLICATION_N_TRIPLES : 'nt',
                      CONTENT_LD_JSON : 'json-ld'}
 
 # Convert an rdflib Graph to an RDF/JSON structure

@@ -219,6 +219,7 @@ def convert_to_requested_format(document, headers, environ): #TODO: pass in req,
         application/rdf+xml
         text/turtle
         application/x-turtle
+        application/n-triples
         application/ld+json    
     """
     # In this application architectural style, the only method that ever returns HTML is GET. We never
@@ -233,6 +234,7 @@ def convert_to_requested_format(document, headers, environ): #TODO: pass in req,
                                         'application/rdf+xml',
                                         'text/turtle',
                                         'application/x-turtle',
+                                        'application/n-triples',
                                         'application/ld+json'])
     #revision = document.get('ce_revision')
     #if revision:
@@ -251,7 +253,8 @@ def convert_to_requested_format(document, headers, environ): #TODO: pass in req,
         elif best_match == 'application/rdf+json':
             document = rdf_json.normalize(document)
             body = json.dumps(document, cls=rdf_json.RDF_JSON_Encoder)
-        elif best_match == 'application/rdf+xml' or best_match == 'text/turtle' or best_match == 'application/x-turtle' or best_match == 'application/ld+json':
+        elif best_match == 'application/rdf+xml' or best_match == 'text/turtle' or best_match == 'application/x-turtle' or \
+             best_match == 'application/n-triples' or best_match == 'application/ld+json':
             graph = rdfjson_to_graph(rdf_json.normalize(document))
             body = serialize_graph(graph, best_match, None) #TODO: should we use wfile instead of string return value?
         elif best_match == 'text/html':
