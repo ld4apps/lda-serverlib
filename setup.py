@@ -13,5 +13,5 @@ setup(name='lda-serverlib',
                         'isodate==0.5.0',
                         'rdflib==4.2.0',
                         'rdflib-jsonld==0.2',
-                        'werkzeug==0.9.4']
+                        'werkzeug==0.15.3']
      )
